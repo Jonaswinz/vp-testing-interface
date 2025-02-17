@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(vp-testing-interface)
+
+set(src "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(inc "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+set(sources
+    ${src}/test_receiver.cpp
+    ${src}/mq_test_interface.cpp
+    ${src}/pipe_test_interface.cpp
+)
+
+# Create the library (Choose STATIC or SHARED)
+add_library(vp_testing_interface STATIC ${sources}) # Change STATIC to SHARED for shared library
+
+# Include the public headers
+target_include_directories(vp_testing_interface PUBLIC ${inc})
+
+# Set C++ standard
+set_target_properties(vp_testing_interface PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
+
+# Install rules (optional, for system-wide usage)
+install(TARGETS vp_testing_interface DESTINATION lib)
+install(DIRECTORY ${inc}/ DESTINATION include) # Copy headers
