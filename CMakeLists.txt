@@ -12,14 +12,14 @@ set(sources
 )
 
 # Create the library (Choose STATIC or SHARED)
-add_library(vp_testing_interface STATIC ${sources}) # Change STATIC to SHARED for shared library
+add_library(vp-testing-interface STATIC ${sources}) # Change STATIC to SHARED for shared library
 
 # Include the public headers
-target_include_directories(vp_testing_interface PUBLIC ${inc})
+target_include_directories(vp-testing-interface PUBLIC ${inc})
 
 # Set C++ standard
-set_target_properties(vp_testing_interface PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
+set_target_properties(vp-testing-interface PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
 
 # Install rules (optional, for system-wide usage)
-install(TARGETS vp_testing_interface DESTINATION lib)
+install(TARGETS vp-testing-interface DESTINATION lib)
 install(DIRECTORY ${inc}/ DESTINATION include) # Copy headers
