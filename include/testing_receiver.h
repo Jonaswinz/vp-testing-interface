@@ -57,7 +57,7 @@ namespace testing{
             void wait_for_events_processes();
 
             // Function that notifies the receiver an occourance of an new event, via the m_full_slots mutex.
-            void notify_event(status event);
+            void notify_event(event new_event);
 
             // Function that blocks until a new event occoured, via the m_full_slots mutex.
             void wait_for_event();
@@ -66,7 +66,7 @@ namespace testing{
             bool is_event_queue_empty();
 
             // Getter for the first event of the event queue. This will also remove this first event.
-            status get_and_remove_first_event();
+            event get_and_remove_first_event();
 
             // Function to reset the code coverage, by writing zeros to m_bb_array.
             void reset_code_coverage();
@@ -140,7 +140,7 @@ namespace testing{
             virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, size_t mmio_element_count, char* mmio_value) = 0;
 
             // Event queue
-            std::deque<status> m_event_queue;
+            std::deque<event> m_event_queue;
 
             // Mutexes for synchonization of events.
             sem_t m_full_slots;

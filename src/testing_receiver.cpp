@@ -174,8 +174,8 @@ namespace testing{
         sem_wait(&m_empty_slots);
     }
 
-    void testing_receiver::notify_event(status event){
-        m_event_queue.push_back(event);
+    void testing_receiver::notify_event(event new_event){
+        m_event_queue.push_back(new_event);
 
         //Notify new event.
         sem_post(&m_full_slots);
@@ -190,8 +190,8 @@ namespace testing{
         return m_event_queue.empty();
     }
 
-    status testing_receiver::get_and_remove_first_event(){
-        status last_event = m_event_queue.front();
+    event testing_receiver::get_and_remove_first_event(){
+        event last_event = m_event_queue.front();
         m_event_queue.pop_front();
 
         return last_event;
