@@ -6,9 +6,10 @@ set(src "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(inc "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set(sources
-    ${src}/test_receiver.cpp
-    ${src}/mq_test_interface.cpp
-    ${src}/pipe_test_interface.cpp
+    ${src}/testing_receiver.cpp
+    ${src}/testing_communication.cpp
+    ${src}/mq_testing_communication.cpp
+    ${src}/pipe_testing_communication.cpp
 )
 
 # Create the library (Choose STATIC or SHARED)
