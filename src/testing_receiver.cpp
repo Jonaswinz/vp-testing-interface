@@ -28,6 +28,8 @@ namespace testing{
         if(communication == nullptr){
             return false;
         }
+
+        if(!communication->is_started()) communication->start();
         
         m_communication = communication;
         return true;
@@ -38,7 +40,7 @@ namespace testing{
 
         // Starts the receiver loop inside a new thread.
         m_receiver_thread = std::thread([this] {
-            this->receiver();
+            this->receiver_loop();
         });
 
         return true;
@@ -123,7 +125,7 @@ namespace testing{
         return  testing_communication::STATUS_OK;
     }
 
-    void testing_receiver::receiver() {
+    void testing_receiver::receiver_loop() {
 
         while (true) {
 

@@ -66,6 +66,9 @@ namespace testing{
             // Virtual function to start the interface. Needs to be overwritten.
             virtual bool start() = 0;
 
+            // Function returning the started indicator.
+            bool is_started();
+
             // Virtual function that sends a response via the implemented interface. Needs to be overwritten.
             virtual bool send_response(response &req) = 0; 
 
@@ -97,6 +100,9 @@ namespace testing{
 
             // Object holding the latest request.
             testing_communication::request m_current_req;
+
+            // Indicates if the communication was started
+            bool m_started = false;
 
     };
 

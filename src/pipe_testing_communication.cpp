@@ -53,6 +53,8 @@ namespace testing{
             return false;
         }
 
+        m_started = true;
+
         return true;
     }
 

@@ -39,16 +39,16 @@ namespace testing{
             // Starts the receiver loop inside a new thread, thus starts the receiving of requests.
             bool start_receiver_in_thread();
 
+            // Infinite loop which checks the communication interface for new requests and then calls the corresponding handlers. After a request is handeled it will send a response back.
+            void receiver_loop();
+
             // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. This function will seperate the whole shared memory block given by the shm id and offset into elements of mmio_length for the do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
             testing_communication::status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, u64 mmio_address, u64 mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination);
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
             testing_communication::status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
-
+            
         protected:
-
-            // Infinite loop which checks the communication interface for new requests and then calls the corresponding handlers. After a request is handeled it will send a response back.
-            void receiver();
 
             // Function that signals the receiver to continue to the next events (that the current event was handeled), via the m_empty_slots mutex.
             void continue_to_next_event();
@@ -116,7 +116,7 @@ namespace testing{
             virtual testing_communication::status handle_write_mmio(u64 address, u64 length, char* value) = 0;
 
             // Virtual function to handle a TRIGGER_CPU_INTERRUPT command. Needs to be overwritten. With this function a CPU ISR can be triggered manually by its ID.
-            virtual testing_communication::status handle_trigger_cpu_interrupt(uint8_t interrupt);
+            virtual testing_communication::status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
 
             // Virtual function to handle a ENABLE_CODE_COVERAGE command. This will enable the code coverage tracking.
             virtual testing_communication::status handle_enable_code_coverage() = 0;

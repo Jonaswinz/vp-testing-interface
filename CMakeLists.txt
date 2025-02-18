@@ -21,6 +21,8 @@ target_include_directories(vp-testing-interface PUBLIC ${inc})
 # Set C++ standard
 set_target_properties(vp-testing-interface PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
 
+target_link_libraries(vp-testing-interface PUBLIC pthread rt)
+
 # Install rules (optional, for system-wide usage)
 install(TARGETS vp-testing-interface DESTINATION lib)
 install(DIRECTORY ${inc}/ DESTINATION include) # Copy headers

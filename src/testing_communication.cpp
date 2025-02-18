@@ -2,6 +2,10 @@
 
 namespace testing{
 
+    bool testing_communication::is_started(){
+        return m_started;
+    }
+
     void testing_communication::respond_malformed(response &res){
         res.response_status = STATUS_MALFORMED;
         res.data = nullptr;
