@@ -484,7 +484,7 @@ namespace testing{
                 res.data_length = sizeof(uint64_t);
                 res.data = (char*)malloc(res.data_length);
                 uint64_t exit_code = handle_get_return_code();                
-                testing_communication::int32_to_bytes(exit_code, res.data, 0);
+                testing_communication::int64_to_bytes(exit_code, res.data, 0);
 
                 break;
             }
