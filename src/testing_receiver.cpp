@@ -248,7 +248,7 @@ namespace testing{
             case CONTINUE:
             {
                 // Checks request length to be as expected and if not also changes the response to contain STATUS_MALFORMED.
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
                 
                 // Creates response data array with the required length.
                 res.data_length = sizeof(event);
@@ -265,7 +265,7 @@ namespace testing{
             case KILL:
             {
                 // Expect 1 byte of data: gracefully
-                if(check_exact_request_length(req, res, 1)) return;
+                if(!check_exact_request_length(req, res, 1)) return;
 
                 char gracefully = req.data[0];
                 res.response_status = handle_kill((bool)gracefully);
@@ -280,7 +280,7 @@ namespace testing{
             case SET_BREAKPOINT:
             {
                 // Expect minimum 2 bytes of data: offset, min. one character 
-                if(check_min_request_length(req, res, 2)) return;
+                if(!check_min_request_length(req, res, 2)) return;
 
                 uint8_t offset = req.data[0];
                 // The length of the symbol name is determined by the data length without the offset. So not additional length checking is required.
@@ -296,7 +296,7 @@ namespace testing{
             case REMOVE_BREAKPOINT:
             {
                 // Expect minimum 1 bytes of data:  min. one character 
-                if(check_min_request_length(req, res, 1)) return;
+                if(!check_min_request_length(req, res, 1)) return;
                 
                 // The length of the symbol name is determined by the data length. So not additional length checking is required.
                 std::string symbol_name(req.data, req.data_length);
@@ -311,7 +311,7 @@ namespace testing{
             case ENABLE_MMIO_TRACKING:
             {
                 // Expect minimum 9 bytes of data: 8 bytes start address, 8 bytes end address, 1 byte mode.
-                if(check_exact_request_length(req, res, 17)) return;
+                if(!check_exact_request_length(req, res, 17)) return;
 
                 uint64_t start_address = testing_communication::bytes_to_int64(req.data, 0);
                 uint64_t end_address = testing_communication::bytes_to_int64(req.data, 8);
@@ -326,7 +326,7 @@ namespace testing{
 
             case DISABLE_MMIO_TRACKING:
             {
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 res.response_status = handle_disable_mmio_tracking();
                 res.data = nullptr;
@@ -338,7 +338,7 @@ namespace testing{
             case SET_MMIO_READ:
             {   
                 // Expect minimum 1 bytes of data: min. 1 byte of mmio data.
-                if(check_min_request_length(req, res, 1)) return;
+                if(!check_min_request_length(req, res, 1)) return;
 
                 res.response_status = handle_set_mmio_read(res.data_length, &req.data[4]);
                 res.data = nullptr;
@@ -350,14 +350,14 @@ namespace testing{
             case ADD_TO_MMIO_READ_QUEUE:
             {   
                 // Expect minimum 16 bytes of data: 8 bytes address, 4 bytes length, 4 byte element count.
-                if(check_min_request_length(req, res, 16)) return;
+                if(!check_min_request_length(req, res, 16)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
                 uint32_t elements = testing_communication::bytes_to_int32(req.data, 12);
 
                 // Check if the total length matches
-                if(check_exact_request_length(req, res, 16+length*elements)) return;
+                if(!check_exact_request_length(req, res, 16+length*elements)) return;
 
                 res.response_status = handle_add_to_mmio_read_queue(address, length, elements, &req.data[16]);
                 res.data = nullptr;
@@ -369,13 +369,13 @@ namespace testing{
             case WRITE_MMIO:
             {   
                 // Expect minimum 9 bytes of data: 8 bytes address, 8 bytes length.
-                if(check_min_request_length(req, res, 16)) return;
+                if(!check_min_request_length(req, res, 16)) return;
                 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint64_t length = testing_communication::bytes_to_int64(req.data, 8);
 
                 // Check if the total length matches
-                if(check_exact_request_length(req, res, 16+length)) return;
+                if(!check_exact_request_length(req, res, 16+length)) return;
 
                 res.response_status = handle_write_mmio(address, length, &req.data[16]);
                 res.data = nullptr;
@@ -387,7 +387,7 @@ namespace testing{
             case TRIGGER_CPU_INTERRUPT:
             {   
                 // Expect minimum 1 bytes of data: interrupt index
-                if(check_min_request_length(req, res, 1)) return;
+                if(!check_min_request_length(req, res, 1)) return;
                 
                 uint8_t interrupt = res.data[0];
 
@@ -400,7 +400,7 @@ namespace testing{
 
             case ENABLE_CODE_COVERAGE:
             {
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 res.response_status = handle_enable_code_coverage();
                 res.data = nullptr;
@@ -411,7 +411,7 @@ namespace testing{
 
             case DISABLE_CODE_COVERAGE:
             {
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 res.response_status = handle_disable_code_coverage();
                 res.data = nullptr;
@@ -422,7 +422,7 @@ namespace testing{
 
             case GET_CODE_COVERAGE:
             {
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 std::string coverage = handle_get_code_coverage();
 
@@ -437,7 +437,7 @@ namespace testing{
             case GET_CODE_COVERAGE_SHM:
             {
                 // Min of 8 bytes length: shm_id and offset 4 bytes each.
-                if(check_exact_request_length(req, res, 8)) return;
+                if(!check_exact_request_length(req, res, 8)) return;
 
                 uint32_t shm_id = testing_communication::bytes_to_int32(req.data, 0);
                 uint32_t offset = testing_communication::bytes_to_int32(req.data, 4);
@@ -451,7 +451,7 @@ namespace testing{
 
             case RESET_CODE_COVERAGE:
             {
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 res.response_status = handle_reset_code_coverage();
                 res.data = nullptr;
@@ -464,7 +464,7 @@ namespace testing{
             {   
 
                 // Expect minimum 1 bytes of data: 4 bytes address, min. 1 byte reg name
-                if(check_min_request_length(req, res, 5)) return;
+                if(!check_min_request_length(req, res, 5)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 // The length of the symbol name is determined by the data length without the address. So not additional length checking is required.
@@ -479,7 +479,7 @@ namespace testing{
 
             case GET_RETURN_CODE:
             {   
-                if(check_exact_request_length(req, res, 0)) return;
+                if(!check_exact_request_length(req, res, 0)) return;
 
                 res.data_length = sizeof(uint64_t);
                 res.data = (char*)malloc(res.data_length);
@@ -503,7 +503,7 @@ namespace testing{
                 // (? Bytes) Data
 
                 // Min of 20 bytes length (both names at least one characters).
-                if(check_min_request_length(req, res, 20)) return;
+                if(!check_min_request_length(req, res, 20)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
@@ -513,7 +513,7 @@ namespace testing{
                 uint8_t end_breakpoint_length = req.data[17];
                 
                 // Check again with all length combined.
-                if(check_exact_request_length(req, res, 18+start_breakpoint_length+end_breakpoint_length+(length*elements))) return;
+                if(!check_exact_request_length(req, res, 18+start_breakpoint_length+end_breakpoint_length+(length*elements))) return;
 
                 std::string start_breakpoint(&req.data[18], start_breakpoint_length);
                 std::string end_breakpoint(&req.data[start_breakpoint_length+18], end_breakpoint_length);
@@ -540,7 +540,7 @@ namespace testing{
                 // (? Bytes) End breakpoint name 
 
                 // Min of 25 bytes length (both names at least one characters).
-                if(check_min_request_length(req, res, 25)) return;
+                if(!check_min_request_length(req, res, 25)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
@@ -553,7 +553,7 @@ namespace testing{
                 uint8_t end_breakpoint_length = req.data[22];
 
                 // Check again with all length combined.
-                if(check_exact_request_length(req, res, 23+start_breakpoint_length+end_breakpoint_length)) return;
+                if(!check_exact_request_length(req, res, 23+start_breakpoint_length+end_breakpoint_length)) return;
 
                 std::string start_breakpoint(&req.data[23], start_breakpoint_length);
                 std::string end_breakpoint(&req.data[start_breakpoint_length+23], end_breakpoint_length);
