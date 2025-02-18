@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
+#include "types.h"
+
 #define MQ_REQUEST_LENGTH 256
 #define MQ_RESPONSE_LENGTH 256
 
@@ -22,40 +24,6 @@ namespace testing{
     // Abstract definition of a test_interface. This need to be implemented for a specific communication interface.
     class testing_communication{
         public: 
-
-            // Types of interface that exists.
-            enum communication{
-                MQ, PIPE, INTERFACE_COUNT
-            };
-
-            // Possible commands.
-            enum command{
-                CONTINUE, KILL, SET_BREAKPOINT, REMOVE_BREAKPOINT, ENABLE_MMIO_TRACKING, DISABLE_MMIO_TRACKING, SET_MMIO_READ, ADD_TO_MMIO_READ_QUEUE, WRITE_MMIO, TRIGGER_CPU_INTERRUPT, ENABLE_CODE_COVERAGE, DISABLE_CODE_COVERAGE, GET_CODE_COVERAGE, GET_CODE_COVERAGE_SHM, RESET_CODE_COVERAGE, SET_RETURN_CODE_ADDRESS, GET_RETURN_CODE, DO_RUN, DO_RUN_SHM
-            };
-
-            // Possible return status codes.
-            enum status{
-                STATUS_OK, STATUS_ERROR, STATUS_MALFORMED
-            };
-
-            // Possible events that the simulation can produce.
-            enum event{
-                MMIO_READ, MMIO_WRITE, VP_END, BREAKPOINT_HIT
-            };
-            
-            // Represents a request send to the implemented testing interface with a command ID and flexible length data.
-            struct request{
-                command cmd;
-                char* data = nullptr;
-                size_t data_length = 0;
-            };
-
-            // Represents a response of the testing interface, which contains of an response status and the response data.
-            struct response{
-                status response_status;
-                char* data = nullptr;
-                size_t data_length = 0;
-            };
 
             // Creates a testing interface, this requires a pointer to the test_receiver.
             testing_communication(testing_receiver* receiver):m_testing_receiver(receiver){};
@@ -99,7 +67,7 @@ namespace testing{
             testing_receiver* m_testing_receiver = nullptr;
 
             // Object holding the latest request.
-            testing_communication::request m_current_req;
+            request m_current_req;
 
             // Indicates if the communication was started
             bool m_started = false;
@@ -120,7 +88,7 @@ namespace testing{
             bool start() override;
 
             // Implemented function to send a response. This function will send a message with the response status and then the data to the response message queue. If the data is longer than the configured message length, it will send the data in multiple messages.
-            bool send_response(testing_communication::response &req) override;
+            bool send_response(response &req) override;
 
             // Implemented function that checks for new requests. This function checks the request message queue for new messages and saves the first into the temporary m_current_req object.
             bool receive_request() override;
@@ -159,7 +127,7 @@ namespace testing{
             bool start() override;
 
             // Implemented function to send a response. This will write the response status, data length and then the data to the response pipe.
-            bool send_response(testing_communication::response &req) override;
+            bool send_response(response &req) override;
 
             // Implemented function that checks for new requests. This function checks the request pipe for new request and saves the first into the temporary m_current_req object.
             bool receive_request() override;

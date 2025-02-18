@@ -46,7 +46,7 @@ namespace testing{
         return true;
     }
 
-    testing_communication::status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, u64 mmio_address, u64 mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination)
+    status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, uint64_t mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination)
     {
         log_info_message("Loading MMIO data from shared memory %d.", shm_id);
 
@@ -55,13 +55,13 @@ namespace testing{
         char* mmio_data = static_cast<char*>(shmat(shm_id, nullptr, SHM_RDONLY));
         if (mmio_data == reinterpret_cast<char*>(-1)) {
             log_error_message("Failed to attach shared memory segment: %s", strerror(errno));
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
         struct shmid_ds shm_info;
         if (shmctl(shm_id, IPC_STAT, &shm_info) == -1) {
             log_error_message("Reading length of shared memory failed!");
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
         size_t data_length = shm_info.shm_segsz-offset;
@@ -78,7 +78,7 @@ namespace testing{
             log_error_message("The shared memory segment of size %d cannot be devided by element length %d without remainder! Continuing.");
         }
 
-        testing_communication::status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, mmio_length, elements, mmio_data+offset);
+        status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, mmio_length, elements, mmio_data+offset);
 
         // Detach the shared memory
         if (shmdt(mmio_data) == -1) {
@@ -89,7 +89,7 @@ namespace testing{
         return return_status;
     }
 
-    testing_communication::status testing_receiver::handle_get_code_coverage_shm(int shm_id, unsigned int offset)
+    status testing_receiver::handle_get_code_coverage_shm(int shm_id, unsigned int offset)
     {
         //TODO check if coverage was enabled !?
 
@@ -99,30 +99,30 @@ namespace testing{
         char* shm_addr = static_cast<char*>(shmat(shm_id, nullptr, 0));
         if (shm_addr == reinterpret_cast<char*>(-1)) {
             log_error_message("Failed to attach code coverage shared memory: %s", strerror(errno));
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
         struct shmid_ds shm_info;
         if (shmctl(shm_id, IPC_STAT, &shm_info) == -1) {
             log_error_message("Reading length of coverage shared memory failed!");
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
-        if(MAP_SIZE*sizeof(u8) > (size_t)shm_info.shm_segsz-offset){
+        if(MAP_SIZE*sizeof(uint8_t) > (size_t)shm_info.shm_segsz-offset){
             log_error_message("Coverage map does not fit into the shared memory!");
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
         // Write the data to the shared memory
-        std::memcpy(shm_addr+offset, m_bb_array, MAP_SIZE*sizeof(u8));
+        std::memcpy(shm_addr+offset, m_bb_array, MAP_SIZE*sizeof(uint8_t));
 
         // Detach the shared memory
         if (shmdt(shm_addr) == -1) {
             log_error_message("Failed to detach code coverage shared memory: %s", strerror(errno));
-            return testing_communication::STATUS_ERROR;
+            return STATUS_ERROR;
         }
 
-        return  testing_communication::STATUS_OK;
+        return  STATUS_OK;
     }
 
     void testing_receiver::receiver_loop() {
@@ -132,7 +132,7 @@ namespace testing{
             if(m_communication->receive_request()){
 
                 m_current_req = m_communication->get_request();
-                m_current_res = mq_testing_communication::response();
+                m_current_res = response();
 
                 log_info_message("Successfully received request with command: %d", (uint8_t)m_current_req.cmd);
 
@@ -174,7 +174,7 @@ namespace testing{
         sem_wait(&m_empty_slots);
     }
 
-    void testing_receiver::notify_event(testing_communication::status event){
+    void testing_receiver::notify_event(status event){
         m_event_queue.push_back(event);
 
         //Notify new event.
@@ -190,8 +190,8 @@ namespace testing{
         return m_event_queue.empty();
     }
 
-    testing_communication::status testing_receiver::get_and_remove_first_event(){
-        testing_communication::status last_event = m_event_queue.front();
+    status testing_receiver::get_and_remove_first_event(){
+        status last_event = m_event_queue.front();
         m_event_queue.pop_front();
 
         return last_event;
@@ -199,26 +199,26 @@ namespace testing{
 
     void testing_receiver::reset_code_coverage(){
         // Writes all zeros to the basic block tracing array.
-        memset(m_bb_array, 0, MAP_SIZE*sizeof(u8));
+        memset(m_bb_array, 0, MAP_SIZE*sizeof(uint8_t));
     }
 
     std::string testing_receiver::get_code_coverage(){
         // Copying the bb tracke map to a string.
-        std::vector<u8> v(m_bb_array, m_bb_array + sizeof m_bb_array / sizeof m_bb_array[0]);
+        std::vector<uint8_t> v(m_bb_array, m_bb_array + sizeof m_bb_array / sizeof m_bb_array[0]);
         std::string s(v.begin(), v.end());
         return s;
     }
 
-    void testing_receiver::set_block(u64 pc){
+    void testing_receiver::set_block(uint64_t pc){
         //Writing to the basic block traching map. 
-        u64 curr_bb_loc = (pc >> 4) ^ (pc << 8);
+        uint64_t curr_bb_loc = (pc >> 4) ^ (pc << 8);
         curr_bb_loc &= MAP_SIZE - 1;
 
         m_bb_array[curr_bb_loc ^ m_prev_bb_loc]++;
         m_prev_bb_loc = curr_bb_loc >> 1;
     }
 
-    bool testing_receiver::check_exact_request_length(testing_communication::request &req, testing_communication::response &res, size_t length){
+    bool testing_receiver::check_exact_request_length(request &req, response &res, size_t length){
         if(req.data_length != length){
             log_error_message("Request has a different length %d than the exepcted %d!", req.data_length, length);
             testing_communication::respond_malformed(res);
@@ -228,7 +228,7 @@ namespace testing{
         return true;
     }
 
-    bool testing_receiver::check_min_request_length(testing_communication::request &req, testing_communication::response &res, size_t length){
+    bool testing_receiver::check_min_request_length(request &req, response &res, size_t length){
         if(req.data_length < length){
             log_error_message("Request has a different length %d than the exepcted >= %d!", req.data_length, length);
             testing_communication::respond_malformed(res);
@@ -238,31 +238,31 @@ namespace testing{
         return true;
     }
 
-    void testing_receiver::handle_request(testing_communication::request &req, testing_communication::response &res){
+    void testing_receiver::handle_request(request &req, response &res){
 
         // This switch statement calles the right handler functions.
         // When there is response data, it will be allocated and assigned to the response. This memory will be freed when the response is sent.
 
         switch(req.cmd){
 
-            case testing_communication::CONTINUE:
+            case CONTINUE:
             {
                 // Checks request length to be as expected and if not also changes the response to contain STATUS_MALFORMED.
                 if(check_exact_request_length(req, res, 0)) return;
                 
                 // Creates response data array with the required length.
-                res.data_length = sizeof(testing_communication::event);
+                res.data_length = sizeof(event);
                 res.data = (char*)malloc(res.data_length);
                 
                 // Runs he handle function and copys the data to the response data.
-                testing_communication::event last_event;
+                event last_event;
                 res.response_status = handle_continue(last_event);
-                memcpy(res.data, &last_event, sizeof(testing_communication::event));
+                memcpy(res.data, &last_event, sizeof(event));
 
                 break;
             }
 
-            case testing_communication::KILL:
+            case KILL:
             {
                 // Expect 1 byte of data: gracefully
                 if(check_exact_request_length(req, res, 1)) return;
@@ -277,7 +277,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::SET_BREAKPOINT:
+            case SET_BREAKPOINT:
             {
                 // Expect minimum 2 bytes of data: offset, min. one character 
                 if(check_min_request_length(req, res, 2)) return;
@@ -293,7 +293,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::REMOVE_BREAKPOINT:
+            case REMOVE_BREAKPOINT:
             {
                 // Expect minimum 1 bytes of data:  min. one character 
                 if(check_min_request_length(req, res, 1)) return;
@@ -308,13 +308,13 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::ENABLE_MMIO_TRACKING:
+            case ENABLE_MMIO_TRACKING:
             {
                 // Expect minimum 9 bytes of data: 8 bytes start address, 8 bytes end address, 1 byte mode.
                 if(check_exact_request_length(req, res, 17)) return;
 
-                u64 start_address = testing_communication::bytes_to_int64(req.data, 0);
-                u64 end_address = testing_communication::bytes_to_int64(req.data, 8);
+                uint64_t start_address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t end_address = testing_communication::bytes_to_int64(req.data, 8);
                 char mode = req.data[16];
 
                 res.response_status = handle_enable_mmio_tracking(start_address, end_address, mode);
@@ -324,7 +324,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::DISABLE_MMIO_TRACKING:
+            case DISABLE_MMIO_TRACKING:
             {
                 if(check_exact_request_length(req, res, 0)) return;
 
@@ -335,7 +335,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::SET_MMIO_READ:
+            case SET_MMIO_READ:
             {   
                 // Expect minimum 1 bytes of data: min. 1 byte of mmio data.
                 if(check_min_request_length(req, res, 1)) return;
@@ -347,12 +347,12 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::ADD_TO_MMIO_READ_QUEUE:
+            case ADD_TO_MMIO_READ_QUEUE:
             {   
                 // Expect minimum 16 bytes of data: 8 bytes address, 4 bytes length, 4 byte element count.
                 if(check_min_request_length(req, res, 16)) return;
 
-                u64 address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
                 uint32_t elements = testing_communication::bytes_to_int32(req.data, 12);
 
@@ -366,13 +366,13 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::WRITE_MMIO:
+            case WRITE_MMIO:
             {   
                 // Expect minimum 9 bytes of data: 8 bytes address, 8 bytes length.
                 if(check_min_request_length(req, res, 16)) return;
                 
-                u64 address = testing_communication::bytes_to_int64(req.data, 0);
-                u64 length = testing_communication::bytes_to_int64(req.data, 8);
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t length = testing_communication::bytes_to_int64(req.data, 8);
 
                 // Check if the total length matches
                 if(check_exact_request_length(req, res, 16+length)) return;
@@ -384,7 +384,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::TRIGGER_CPU_INTERRUPT:
+            case TRIGGER_CPU_INTERRUPT:
             {   
                 // Expect minimum 1 bytes of data: interrupt index
                 if(check_min_request_length(req, res, 1)) return;
@@ -398,7 +398,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::ENABLE_CODE_COVERAGE:
+            case ENABLE_CODE_COVERAGE:
             {
                 if(check_exact_request_length(req, res, 0)) return;
 
@@ -409,7 +409,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::DISABLE_CODE_COVERAGE:
+            case DISABLE_CODE_COVERAGE:
             {
                 if(check_exact_request_length(req, res, 0)) return;
 
@@ -420,7 +420,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::GET_CODE_COVERAGE:
+            case GET_CODE_COVERAGE:
             {
                 if(check_exact_request_length(req, res, 0)) return;
 
@@ -434,7 +434,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::GET_CODE_COVERAGE_SHM:
+            case GET_CODE_COVERAGE_SHM:
             {
                 // Min of 8 bytes length: shm_id and offset 4 bytes each.
                 if(check_exact_request_length(req, res, 8)) return;
@@ -449,7 +449,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::RESET_CODE_COVERAGE:
+            case RESET_CODE_COVERAGE:
             {
                 if(check_exact_request_length(req, res, 0)) return;
 
@@ -460,13 +460,13 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::SET_RETURN_CODE_ADDRESS:
+            case SET_RETURN_CODE_ADDRESS:
             {   
 
                 // Expect minimum 1 bytes of data: 4 bytes address, min. 1 byte reg name
                 if(check_min_request_length(req, res, 5)) return;
 
-                u64 address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 // The length of the symbol name is determined by the data length without the address. So not additional length checking is required.
                 std::string reg_name(req.data + 4, req.data_length-4);
 
@@ -477,19 +477,19 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::GET_RETURN_CODE:
+            case GET_RETURN_CODE:
             {   
                 if(check_exact_request_length(req, res, 0)) return;
 
-                res.data_length = sizeof(u64);
+                res.data_length = sizeof(uint64_t);
                 res.data = (char*)malloc(res.data_length);
-                u64 exit_code = handle_get_return_code();                
+                uint64_t exit_code = handle_get_return_code();                
                 testing_communication::int32_to_bytes(exit_code, res.data, 0);
 
                 break;
             }
 
-            case testing_communication::DO_RUN:
+            case DO_RUN:
             {
 
                 // Content:
@@ -505,7 +505,7 @@ namespace testing{
                 // Min of 20 bytes length (both names at least one characters).
                 if(check_min_request_length(req, res, 20)) return;
 
-                u64 address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
                 uint32_t elements = testing_communication::bytes_to_int32(req.data, 12);
 
@@ -525,7 +525,7 @@ namespace testing{
                 break;
             }
 
-            case testing_communication::DO_RUN_SHM:
+            case DO_RUN_SHM:
             {
 
                 // Content:
@@ -542,7 +542,7 @@ namespace testing{
                 // Min of 25 bytes length (both names at least one characters).
                 if(check_min_request_length(req, res, 25)) return;
 
-                u64 address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
                 uint32_t shm_id = testing_communication::bytes_to_int32(req.data, 12);
                 uint32_t offset = testing_communication::bytes_to_int32(req.data, 16);
@@ -575,7 +575,7 @@ namespace testing{
         }
     }
 
-    testing_communication::request testing_communication::get_request(){
+    request testing_communication::get_request(){
         return m_current_req;
     }
 

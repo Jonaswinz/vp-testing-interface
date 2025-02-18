@@ -56,7 +56,7 @@ namespace testing{
         return true;
     }
 
-    bool mq_testing_communication::send_response(testing_communication::response &res){
+    bool mq_testing_communication::send_response(response &res){
 
         size_t sent_data_length = 0;
         size_t total_length = res.data_length + sizeof(res.response_status);
@@ -114,7 +114,7 @@ namespace testing{
 
         m_current_req = request();
         m_current_req.data_length = bytes_read-1;
-        m_current_req.cmd = (testing_communication::command)m_buffer[0];
+        m_current_req.cmd = (command)m_buffer[0];
         if(bytes_read > 1){
             m_current_req.data = (char*)malloc(bytes_read-1);
             std::memcpy(m_current_req.data, m_buffer+1, bytes_read-1);

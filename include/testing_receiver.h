@@ -1,5 +1,5 @@
-#ifndef TEST_RECEIVER_H
-#define TEST_RECEIVER_H
+#ifndef TESTING_RECEIVER_H
+#define TESTING_RECEIVER_H
 
 #include <semaphore.h>
 #include <sys/shm.h>
@@ -43,10 +43,10 @@ namespace testing{
             void receiver_loop();
 
             // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. This function will seperate the whole shared memory block given by the shm id and offset into elements of mmio_length for the do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
-            testing_communication::status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, u64 mmio_address, u64 mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination);
+            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, uint64_t mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination);
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
-            testing_communication::status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
+            status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
             
         protected:
 
@@ -57,7 +57,7 @@ namespace testing{
             void wait_for_events_processes();
 
             // Function that notifies the receiver an occourance of an new event, via the m_full_slots mutex.
-            void notify_event(testing_communication::status event);
+            void notify_event(status event);
 
             // Function that blocks until a new event occoured, via the m_full_slots mutex.
             void wait_for_event();
@@ -66,7 +66,7 @@ namespace testing{
             bool is_event_queue_empty();
 
             // Getter for the first event of the event queue. This will also remove this first event.
-            testing_communication::status get_and_remove_first_event();
+            status get_and_remove_first_event();
 
             // Function to reset the code coverage, by writing zeros to m_bb_array.
             void reset_code_coverage();
@@ -75,72 +75,72 @@ namespace testing{
             std::string get_code_coverage();
 
             // Setter for a specific entry (determined by the process counter) in the code coverage array.
-            void set_block(u64 pc);
+            void set_block(uint64_t pc);
 
         private:   
 
             // Check if the request has exactly the same length as the given length. If not it also changes the response to be STATUS_MALFORMED.
-            bool check_exact_request_length(testing_communication::request &req, testing_communication::response &res, size_t length);
+            bool check_exact_request_length(request &req, response &res, size_t length);
 
             // Check if the request has minimum the length as the given length. If not it also changes the response to be STATUS_MALFORMED.
-            bool check_min_request_length(testing_communication::request &req, testing_communication::response &res, size_t length);
+            bool check_min_request_length(request &req, response &res, size_t length);
 
             // Function to handle a request by its pointer and filling the given response. This function will call the handler that corresponds to the request command.
-            void handle_request(testing_communication::request &req, testing_communication::response &res);
+            void handle_request(request &req, response &res);
 
             // Virtual function to handle a CONTINUE command. Needs to be overwritten. This function will write the first element in the event queue to last_event and removes it from the queue. If the queue is empty after this call the simulation will be resumed, because all events were handeled / returned.
-            virtual testing_communication::status handle_continue(testing_communication::event &last_event) = 0;
+            virtual status handle_continue(event &last_event) = 0;
 
             // Virtual function to handle a KILL command. Needs to be overwritten. The boolean gracefully determines if the simulation and whole vp gets killed immediately or shuts down gracefully. If gracefully is set to true, it may take longer for the VP to shut down. It may also be the case that, if the simulation does not terminated, the VP never shuts down.
-            virtual testing_communication::status handle_kill(bool gracefully) = 0;
+            virtual status handle_kill(bool gracefully) = 0;
 
             // Virtual function to handle a SET_BREAKPOINT command. Needs to be overwritten. This function will set a breakpoint by the given symbol name and offset. If the breakpoint is reached a BREAKPOINT_HIT event will triggered.
-            virtual testing_communication::status handle_set_breakpoint(std::string &symbol, int offset) = 0;
+            virtual status handle_set_breakpoint(std::string &symbol, int offset) = 0;
 
             // Virtual function to handle a REMOVE_BREAKPOINT command. Needs to be overwritten. This function will remove a breakpoint by the given symbol name.
-            virtual testing_communication::status handle_remove_breakpoint(std::string &sym_name) = 0;
+            virtual status handle_remove_breakpoint(std::string &sym_name) = 0;
 
             // Virtual function to handle a ENABLE_MMIO_TRACKING command. Needs to be overwritten. This will enable the MMIO interception for a specific address range. The mode determines the tracking type. 0: READ/WRITE, 1: READ, 2: WRITE. If the function is called a second time the new parameters will overwrite the old.
-            virtual testing_communication::status handle_enable_mmio_tracking(u64 start_address, u64 end_address, char mode) = 0;
+            virtual status handle_enable_mmio_tracking(uint64_t start_address, uint64_t end_address, char mode) = 0;
 
             // Virtual function to handle a DISABLE_MMIO_TRACKING command. Needs to be overwritten. This will disalbe the mmio tracking.
-            virtual testing_communication::status handle_disable_mmio_tracking() = 0;
+            virtual status handle_disable_mmio_tracking() = 0;
 
             // Virtual function to handle a SET_MMIO_READ command. Needs to be overwritten. This function sets the read (and intercepted) MMIO data after a MMIO_READ event. For this mmio tracking must be enabled.
-            virtual testing_communication::status handle_set_mmio_read(size_t length, char* value) = 0;
+            virtual status handle_set_mmio_read(size_t length, char* value) = 0;
 
             // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds multiple elements (element_count) to the MMIO read queue for the given address and length. When a read occures and there is a suitable element in the read queue (fits address and length) it will be written to the request and the simulation will not be suspended and MMIO_WRITE event not be triggered. If there a multiple suitable elements, the first in the queue will be picked. Value must contain the elements after another. 
-            virtual testing_communication::status handle_add_to_mmio_read_queue(u64 address, size_t length, size_t element_count, char* value) = 0;
+            virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, size_t element_count, char* value) = 0;
 
             // Virtual function to handle a WRITE_MMIO command. Needs to be overwritten. With this function MMIO data can be written to 
-            virtual testing_communication::status handle_write_mmio(u64 address, u64 length, char* value) = 0;
+            virtual status handle_write_mmio(uint64_t address, uint64_t length, char* value) = 0;
 
             // Virtual function to handle a TRIGGER_CPU_INTERRUPT command. Needs to be overwritten. With this function a CPU ISR can be triggered manually by its ID.
-            virtual testing_communication::status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
+            virtual status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
 
             // Virtual function to handle a ENABLE_CODE_COVERAGE command. This will enable the code coverage tracking.
-            virtual testing_communication::status handle_enable_code_coverage() = 0;
+            virtual status handle_enable_code_coverage() = 0;
 
             // Virtual function to handle a RESET_CODE_COVERAGE command. This will reset the code coverage, by writing zeros to the tracking array.
-            virtual testing_communication::status handle_reset_code_coverage() = 0;
+            virtual status handle_reset_code_coverage() = 0;
 
             // Virtual function to handle a DISABLE_CODE_COVERAGE commnd. This will disable the code coverage tracking.
-            virtual testing_communication::status handle_disable_code_coverage() = 0;
+            virtual status handle_disable_code_coverage() = 0;
 
             // Virtual function to handle a GET_CODE_COVERAGE command. This will return the code coverage array as a string.
             virtual std::string handle_get_code_coverage() = 0;
 
             // Virtual function to handle a SET_RETURN_CODE_ADDRESS command. This will set the address and register name of the return code that should be saved. A breakpoint will be set to this address and if the breakpoint is hit, the value of the register witht the given name is saved.
-            virtual testing_communication::status handle_set_return_code_address(u64 address, std::string reg_name) = 0;
+            virtual status handle_set_return_code_address(uint64_t address, std::string reg_name) = 0;
 
             // Virtual function to handle a GET_RETURN_CODE command. This will return the saved return code. Where and which register should be saved as the return code can be set via SET_RETURN_CODE_ADDRESS.
-            virtual u64 handle_get_return_code() = 0;
+            virtual uint64_t handle_get_return_code() = 0;
 
             // Virtual function to handle a DO_RUN command. This does one run 
-            virtual testing_communication::status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, u64 mmio_address, size_t mmio_length, size_t mmio_element_count, char* mmio_value) = 0;
+            virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, size_t mmio_element_count, char* mmio_value) = 0;
 
             // Event queue
-            std::deque<testing_communication::status> m_event_queue;
+            std::deque<status> m_event_queue;
 
             // Mutexes for synchonization of events.
             sem_t m_full_slots;
@@ -153,12 +153,12 @@ namespace testing{
             testing_communication* m_communication;
 
             // Current active request and response.
-            testing_communication::request m_current_req;
-            testing_communication::response m_current_res;
+            request m_current_req;
+            response m_current_res;
 
             // Array and pointer for code coverage tracking.
-            u8 m_bb_array [MAP_SIZE];
-            u64 m_prev_bb_loc = 0;
+            uint8_t m_bb_array [MAP_SIZE];
+            uint64_t m_prev_bb_loc = 0;
     };
 
 }

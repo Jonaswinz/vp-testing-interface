@@ -30,7 +30,7 @@ namespace testing{
         close(m_fd_request);
     }
 
-    bool pipe_testing_communication::send_response(testing_communication::response &res){
+    bool pipe_testing_communication::send_response(response &res){
         
         // Write the response status.
         ssize_t written = write(m_fd_response, &res.response_status, sizeof(res.response_status));
@@ -82,7 +82,7 @@ namespace testing{
         }
 
         // Creating new request.
-        m_current_req = testing_communication::request();
+        m_current_req = request();
         m_current_req.data_length = length-1;
 
         bytes_read = read(m_fd_request, &m_current_req.cmd, sizeof(m_current_req.cmd)); 
