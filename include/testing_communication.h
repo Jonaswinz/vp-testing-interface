@@ -10,18 +10,12 @@
 
 #include "types.h"
 
-#define MQ_REQUEST_LENGTH 256
-#define MQ_RESPONSE_LENGTH 256
-
-#define PIPE_READ_ERROR_MAX 5
-#define PIPE_MAX_MSG 10
-
 namespace testing{
 
     // Forward declaration of test_receiver.
     class testing_receiver;
 
-    // Abstract definition of a test_interface. This need to be implemented for a specific communication interface.
+    // Abstract definition of a test_communication. This need to be implemented for a specific communication interface.
     class testing_communication{
         public: 
 
@@ -69,12 +63,12 @@ namespace testing{
             // Object holding the latest request.
             request m_current_req;
 
-            // Indicates if the communication was started
+            // Indicates if the communication was started.
             bool m_started = false;
 
     };
 
-    // test_interface implementation for message queues (MQ) communication.
+    // testing_communication implementation for message queues (MQ) communication.
     class mq_testing_communication: public testing_communication{
         public:
 
@@ -99,8 +93,8 @@ namespace testing{
             void clear_mq(const char* queue_name);
 
             // Names of request and response message queues.
-            char* m_mq_request_name;
-            char* m_mq_response_name;
+            std::string m_mq_request_name;
+            std::string m_mq_response_name;
 
             // Obects that holds settings of both message queues. This object needs to exist the whole time message queues are open and used.
             mq_attr m_attr;
@@ -108,12 +102,9 @@ namespace testing{
             // Message queues.
             mqd_t m_mqt_requests, m_mqt_responses;
 
-            // Temporary buffer for the received data.
-            char m_buffer[MQ_REQUEST_LENGTH];
-
     };
 
-    // test_interface implementation for pipe communication.
+    // testing_communication implementation for pipe communication.
     class pipe_testing_communication: public testing_communication{
         public:
 

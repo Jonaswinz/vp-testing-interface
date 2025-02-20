@@ -6,10 +6,8 @@ namespace testing{
     mq_testing_communication::mq_testing_communication(testing_receiver* receiver, std::string mq_request_name, std::string mq_response_name):testing_communication(receiver){
         
         // Copies message queue names to local variables.
-        m_mq_request_name = new char[mq_request_name.length() + 1];
-        std::strcpy(m_mq_request_name, mq_request_name.c_str());
-        m_mq_response_name = new char[mq_response_name.length() + 1];
-        std::strcpy(m_mq_response_name, mq_response_name.c_str());
+        m_mq_request_name = mq_request_name;
+        m_mq_response_name = mq_response_name;
     }
 
     mq_testing_communication::~mq_testing_communication(){
@@ -23,17 +21,17 @@ namespace testing{
 
         // Settings of message queues.
         m_attr.mq_flags = 0;
-        m_attr.mq_maxmsg = PIPE_MAX_MSG;
-        m_attr.mq_msgsize = MQ_REQUEST_LENGTH;
+        m_attr.mq_maxmsg = MQ_MAX_MSG;
+        m_attr.mq_msgsize = MQ_MAX_LENGTH;
         m_attr.mq_curmsgs = 0;
 
         // Openens both message queues.
-        if ((m_mqt_requests = mq_open(m_mq_request_name, O_RDONLY, 0660, &m_attr)) == -1) {
+        if ((m_mqt_requests = mq_open(m_mq_request_name.c_str(), O_RDONLY, 0660, &m_attr)) == -1) {
             m_testing_receiver->log_error_message("Error opening request message queue %s.", m_mq_request_name);
             return false;
         }
 
-        if ((m_mqt_responses = mq_open(m_mq_response_name, O_WRONLY, 0644, &m_attr)) == -1) {
+        if ((m_mqt_responses = mq_open(m_mq_response_name.c_str(), O_WRONLY, 0644, &m_attr)) == -1) {
             m_testing_receiver->log_error_message("Error opening response message queue %s.", m_mq_response_name);
             return false;
         }
@@ -54,49 +52,53 @@ namespace testing{
 
     bool mq_testing_communication::send_response(response &res){
 
-        size_t sent_data_length = 0;
-        size_t total_length = res.data_length + sizeof(res.response_status);
-        
-        // Send the data or maximum RESPONSE_LENGTH much.
-        size_t next_chunk = std::min(total_length, (size_t)MQ_RESPONSE_LENGTH);
+        // Response structure:
+        // 0                     Byte: Status
+        // 1 - (MQ_MAX_LENGTH-1) Byte: Data
 
-        // Temp buffer for the response code and the data, because the message should be send as a whole and not parts.
-        char temp[next_chunk];
-        memcpy(temp, &res.response_status, sizeof(res.response_status));
-        memcpy(temp+sizeof(res.response_status), res.data, next_chunk-sizeof(res.response_status));
+        // Check if communication started.
+        if(!m_started){
+            m_testing_receiver->log_error_message("Communication not started!");
+            return false;
+        }
+
+        // Check if response (command and data) fits in one message (currently only supported that the response is only one message).
+        if(res.data_length+1 > MQ_MAX_LENGTH){
+            m_testing_receiver->log_error_message("When using MQ the request cannot be larget than the defined max length!");
+        }
+
+        // Creating a buffer for sending data.
+        char buffer[res.data_length+1];
+
+        // Write response status and the data to the buffer.
+        buffer[0] = res.response_status;
+        memcpy(buffer+1, res.data, res.data_length);
 
         // Send the response code and data.
-        if(mq_send(m_mqt_responses, temp, next_chunk, 0) == -1){
+        if(mq_send(m_mqt_responses, buffer, res.data_length+1, 0) == -1){
             m_testing_receiver->log_error_message("Error sending response data: %s", strerror(errno));
             return false;
         }
 
-        sent_data_length += next_chunk-sizeof(res.response_status);
-
-        // Send more messages if not the full data was sent (longer than RESPONSE_LENGTH).
-        while(sent_data_length < res.data_length){
-
-            // Send the rest data or maximum RESPONSE_LENGTH much.
-            size_t next_chunk = std::min(res.data_length - sent_data_length, (size_t)MQ_RESPONSE_LENGTH);
-
-            if(mq_send(m_mqt_responses, res.data+sent_data_length, next_chunk, 0) == -1){
-                m_testing_receiver->log_error_message("Error sending response data: %s", strerror(errno));
-                return false;
-            }
-
-            sent_data_length += next_chunk;
-            
-        }
-        
         return true;
     }
 
     bool mq_testing_communication::receive_request(){
-        // Clear buffer
-        memset(m_buffer, 0, sizeof(m_buffer));
+
+        // Request structure:
+        // 0                     Byte: Command
+        // 1 - (MQ_MAX_LENGTH-1) Byte: Data
+
+        // Creating a buffer for receiving data.
+        char buffer[MQ_MAX_LENGTH];
 
         // Receive message
-        size_t bytes_read = mq_receive(m_mqt_requests, m_buffer, MQ_REQUEST_LENGTH, NULL);
+        size_t bytes_read = mq_receive(m_mqt_requests, buffer, MQ_MAX_LENGTH, NULL);
+        if (bytes_read == -1) {
+            m_testing_receiver->log_error_message("Error receiving message %s.", strerror(errno));  
+            return false;
+        }
+
         if (bytes_read < 1) {
             m_testing_receiver->log_error_message("Message was too short for a valid request!");  
             return false;
@@ -108,12 +110,13 @@ namespace testing{
             m_current_req.data = nullptr;
         }
 
+        // Updating the m_current_req variable with the new request.
         m_current_req = request();
         m_current_req.data_length = bytes_read-1;
-        m_current_req.cmd = (command)m_buffer[0];
+        m_current_req.cmd = (command)buffer[0];
         if(bytes_read > 1){
             m_current_req.data = (char*)malloc(bytes_read-1);
-            std::memcpy(m_current_req.data, m_buffer+1, bytes_read-1);
+            std::memcpy(m_current_req.data, buffer+1, bytes_read-1);
         }
 
         return true;

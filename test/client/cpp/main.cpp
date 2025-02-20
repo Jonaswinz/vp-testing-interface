@@ -5,7 +5,7 @@ int main() {
 
     testing::mq_testing_client client = testing::mq_testing_client("/test-request", "/test-response");
 
-    client.init();
+    client.start();
 
     client.wait_for_ready();
 

@@ -1,6 +1,11 @@
 #ifndef TESTING_TYPES_H
 #define TESTING_TYPES_H
 
+#define MQ_MAX_LENGTH 256
+#define MQ_MAX_MSG 10
+
+#define PIPE_READ_ERROR_MAX 5
+
 namespace testing{
 
      // Types of interface that exists.

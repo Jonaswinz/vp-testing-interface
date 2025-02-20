@@ -8,35 +8,95 @@
 #include <mqueue.h>
 #include "types.h"
 
-#define MAX_MSG 10
-#define REQUEST_LENGTH 256
-#define RESPONSE_LENGTH 256
-
 namespace testing{
 
+    // Abstract definition of a testing_client (opposite of test_communication). This need to be implemented for specific communication interface.
     class testing_client {
         public:
-            virtual void init() = 0;
+            // Virtual function to start the interface. Needs to be overwritten.
+            virtual void start() = 0;
+
+            // Virtual function to wait for the ready message on the interface. Needs to be overwritten.
             virtual void wait_for_ready() = 0;
+
+            // Virtual function to send a request and wait for the response (and fill the response). Needs to be overwritten.
             virtual bool send_request(request* req, response* res) = 0;
         protected:
-            bool m_ready = false;
+
+            // Indicates if the communication was started.
+            bool m_started = false;
     };
 
+    // testing_client implementation for message queue communication.
     class mq_testing_client: public testing_client{
         public:
-            mq_testing_client(std::string request_name, std::string m_response_name);
+            // Creates a mq testing client for specific request and response message queues.
+            mq_testing_client(std::string request_name, std::string response_name);
             ~mq_testing_client();
-            void init() override;
+
+            // Implemented start function, which openes the message queues. Both message queues will be cleared during starting.
+            void start() override;
+
+            // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response message queue.
             void wait_for_ready() override;
+
+            // Implemented send_request function, which uses the message queues.
             bool send_request(request* req, response* res) override;
         private:
+
+            // Function to clear lost data of a message queue.
             void clear_mq(const char* queue_name);
 
+            // String name of the request message queue.
             std::string m_request_name;
+
+            // String name of the response message queue.
             std::string m_response_name;
+
+            // Settings of both message queues.
             mq_attr m_attr;
+
+            // Request message queue
             mqd_t m_mqt_requests;
+
+            // Response message queue.
+            mqd_t m_mqt_responses;
+    };
+
+    // testing_client implementation for message queue communication.
+    class pipe_testing_client: public testing_client{
+        public:
+            // Creates a pipe testing client for specific request and response pipes.
+            pipe_testing_client(int request_fd, int response_fd);
+            ~pipe_testing_client();
+
+            // Implemented start function, which openes the pipes. Both pipes will be cleared during starting.
+            void start() override;
+
+            // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response pipe.
+            void wait_for_ready() override;
+
+            // Implemented send_request function, which uses the message queues. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
+            bool send_request(request* req, response* res) override;
+            
+        private:
+
+            // Function to clear lost data of a message queue.
+            void clear_mq(const char* queue_name);
+
+            // String name of the request message queue.
+            std::string m_request_name;
+
+            // String name of the response message queue.
+            std::string m_response_name;
+
+            // Settings of both message queues.
+            mq_attr m_attr;
+
+            // Request message queue
+            mqd_t m_mqt_requests;
+
+            // Response message queue.
             mqd_t m_mqt_responses;
     };
 }

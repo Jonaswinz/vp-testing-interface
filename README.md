@@ -52,7 +52,7 @@ A command and its data are sent as a request to the VP and a response will be se
 
 ## New Client
 
-Implementation of a client is quite easy. Just use the testing_client class to send the requests and parse responses via the wanted communication interface. Inside the `test/client/` folder, you find examples on how to use it. The client should be always started before the VP, because it creates the message queues / pipes if not exist and clears lost data.
+Implementation of a client is quite easy. Just use the testing_client class to send the requests and parse responses via the wanted communication interface. Inside the `test/client/` folder, you find examples on how to use it. The client should be always started before the VP, because it creates the message queues / pipes if not exist and clears lost data. When using message queues, only MQ_MAX_LENGTH (default 256) - 1 bytes of data is supported for the request. The reponse is not limited.
 
 ## New VP Implementation
 

@@ -12,7 +12,6 @@ namespace testing{
         res.data_length = 0;
     }
 
-    // Copying a 32bit integer to a buffer at a start index MSB.
     void testing_communication::int32_to_bytes(int32_t value, char* buffer, size_t start){
         buffer[start]     = (char)((value >> 24) & 0xFF);
         buffer[start + 1] = (char)((value >> 16) & 0xFF);
@@ -20,7 +19,6 @@ namespace testing{
         buffer[start + 3] = (char)(value & 0xFF);    
     }
 
-    // Copying a 32bit integer from a buffer at a start index MSB.
     int32_t testing_communication::bytes_to_int32(const char* buffer, size_t start){
         return  ((int32_t)(uint8_t)buffer[start] << 24) |
                 ((int32_t)(uint8_t)buffer[start + 1] << 16) |
