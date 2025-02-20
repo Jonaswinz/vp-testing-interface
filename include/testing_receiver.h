@@ -7,6 +7,7 @@
 #include <thread>
 #include <cstring>
 #include <vector>
+#include <unistd.h>
 
 #include "testing_communication.h"
 #include "types.h"

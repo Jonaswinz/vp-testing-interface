@@ -16,7 +16,7 @@ namespace testing{
         mq_close(m_mqt_responses);
     }
 
-    void mq_testing_client::start(){
+    bool mq_testing_client::start(){
 
         // Settings of message queues.
         m_attr.mq_flags = 0;
@@ -31,40 +31,40 @@ namespace testing{
         // Openens both message queues and create them if not exist.
         if ((m_mqt_requests = mq_open(m_request_name.c_str(), O_WRONLY | O_CREAT, 0644, &m_attr)) == -1) {
             std::cout << "ERROR: Error opening request message queue." << std::endl;
-            exit(1);
+            return false;
         }
 
         if ((m_mqt_responses = mq_open(m_response_name.c_str(), O_RDONLY | O_CREAT, 0660, &m_attr)) == -1) {
             std::cout << "ERROR: Error opening response message queue." << std::endl;
-            exit(1);
+            return false;
         }
+
+        return true;
     }
 
     void mq_testing_client::wait_for_ready(){
-        char* buffer = new char[MQ_MAX_LENGTH];
-        unsigned int priority;
+        char buffer[MQ_MAX_LENGTH];
 
         // Waiting for "ready" string of response message queue.
         while (true) {
-            ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, &priority);
+            ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, 0);
 
             if (bytes_read == -1) {
-                std::cout << "ERROR: An error occurred while waiting for ready message!" << std::endl;
-                break;
+                std::cout << "ERROR: An error occurred while waiting for ready message: " << strerror(errno) << std::endl;
+                return;
             }
 
             buffer[bytes_read] = '\0'; // Ensure null-termination for valid string.
             std::string message(buffer);
             if (message == "ready") {
                 std::cout << "Received ready message!" << std::endl;
+
+                // Indicate ready.
+                m_started = true;
+
                 break;
             }
         }
-
-        delete[] buffer;
-
-        // Indicate ready.
-        m_started = true;
     }
 
     bool mq_testing_client::send_request(request* req, response* res) {
@@ -142,12 +142,10 @@ namespace testing{
             return;
         }
 
-        struct mq_attr attr;
-        mq_getattr(mqd, &attr);
-        char* buffer = new char[attr.mq_msgsize];
+        char buffer[MQ_MAX_LENGTH];
 
         while (true) {
-            ssize_t bytes_read = mq_receive(mqd, buffer, attr.mq_msgsize, NULL);
+            ssize_t bytes_read = mq_receive(mqd, buffer, MQ_MAX_LENGTH, NULL);
             if (bytes_read == -1) {
                 if (errno == EAGAIN) {
                     std::cout << "Message queue " << queue_name << " is now empty." << std::endl;
@@ -156,7 +154,6 @@ namespace testing{
             }
         }
 
-        delete[] buffer;
         mq_close(mqd);
     }
 }

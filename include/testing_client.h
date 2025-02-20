@@ -6,7 +6,9 @@
 #include <cstring>
 #include <fcntl.h> 
 #include <mqueue.h>
+
 #include "types.h"
+#include "testing_communication.h"
 
 namespace testing{
 
@@ -14,7 +16,7 @@ namespace testing{
     class testing_client {
         public:
             // Virtual function to start the interface. Needs to be overwritten.
-            virtual void start() = 0;
+            virtual bool start() = 0;
 
             // Virtual function to wait for the ready message on the interface. Needs to be overwritten.
             virtual void wait_for_ready() = 0;
@@ -35,12 +37,12 @@ namespace testing{
             ~mq_testing_client();
 
             // Implemented start function, which openes the message queues. Both message queues will be cleared during starting.
-            void start() override;
+            bool start() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response message queue.
             void wait_for_ready() override;
 
-            // Implemented send_request function, which uses the message queues.
+            // Implemented send_request function, which uses the message queues. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;
         private:
 
@@ -63,7 +65,7 @@ namespace testing{
             mqd_t m_mqt_responses;
     };
 
-    // testing_client implementation for message queue communication.
+    // testing_client implementation for pipe communication.
     class pipe_testing_client: public testing_client{
         public:
             // Creates a pipe testing client for specific request and response pipes.
@@ -71,33 +73,28 @@ namespace testing{
             ~pipe_testing_client();
 
             // Implemented start function, which openes the pipes. Both pipes will be cleared during starting.
-            void start() override;
+            bool start() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response pipe.
             void wait_for_ready() override;
 
-            // Implemented send_request function, which uses the message queues. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
+            // Implemented send_request function, which uses the pipes. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;
             
         private:
 
-            // Function to clear lost data of a message queue.
-            void clear_mq(const char* queue_name);
+            // Function to clear lost data of a pipe.
+            void clear_pipe(int fd);
 
-            // String name of the request message queue.
-            std::string m_request_name;
+            // File descriptor of the request pipe.
+            int m_request_fd;
 
-            // String name of the response message queue.
-            std::string m_response_name;
+            // File descriptor of the response pipe.
+            int m_response_fd;
 
-            // Settings of both message queues.
-            mq_attr m_attr;
-
-            // Request message queue
-            mqd_t m_mqt_requests;
-
-            // Response message queue.
-            mqd_t m_mqt_responses;
+            int m_request_pipe[2];
+            
+            int m_response_pipe[2];
     };
 }
 

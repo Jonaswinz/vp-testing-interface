@@ -129,9 +129,10 @@ int main() {
     std::cout << "Testing implementation for vp-testing-interface library!" << std::endl;
 
     testing::testing_receiver* receiver = new test_testing_receiver();
-    testing::mq_testing_communication* communication = new testing::mq_testing_communication(receiver, "/test-request", "/test-response");
+    //testing::mq_testing_communication* communication = new testing::mq_testing_communication(receiver, "/test-request", "/test-response");
+    testing::pipe_testing_communication* communication = new testing::pipe_testing_communication(receiver, 10, 11);
 
-    communication->start();
+    if(!communication->start()) return 0;
 
     receiver->set_communication(communication);
     //receiver->start_receiver_in_thread();

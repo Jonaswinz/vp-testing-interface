@@ -89,6 +89,12 @@ namespace testing{
         // 0                     Byte: Command
         // 1 - (MQ_MAX_LENGTH-1) Byte: Data
 
+        // Check if communication started.
+        if(!m_started){
+            m_testing_receiver->log_error_message("Communication not started!");
+            return false;
+        }
+
         // Creating a buffer for receiving data.
         char buffer[MQ_MAX_LENGTH];
 

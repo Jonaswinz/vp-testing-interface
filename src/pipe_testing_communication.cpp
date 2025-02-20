@@ -20,6 +20,8 @@ namespace testing{
             return false;
         }
 
+        m_started = true;
+
         return true;
     }
 
@@ -32,48 +34,71 @@ namespace testing{
 
     bool pipe_testing_communication::send_response(response &res){
         
+        // Check if communication started.
+        if(!m_started){
+            m_testing_receiver->log_error_message("Communication not started!");
+            return false;
+        }
+
+        // Creating a buffer for the command and data length.
+        char buffer[sizeof(uint32_t)+1];
+
+        // Copy status and data length into one buffer.
+        buffer[0] = res.response_status;
+        testing_communication::int32_to_bytes(res.data_length, buffer, 1);
+
         // Write the response status.
-        ssize_t written = write(m_fd_response, &res.response_status, sizeof(res.response_status));
+        ssize_t written = write(m_fd_response, buffer, sizeof(uint32_t)+1);
         if (written == -1) {
-            m_testing_receiver->log_error_message("Could not send the data length to the response pipe!");
+            m_testing_receiver->log_error_message("Could not send command and data length to the response pipe!");
             return false;
         }
 
-        // Write the data length.
-        written = write(m_fd_response, &res.data_length, sizeof(res.data_length));
-        if (written == -1) {
-            m_testing_receiver->log_error_message("Could not send the data length to the response pipe!");
-            return false;
-        }
-
-        // Write the whole response at once.
+        // Write the whole data at once.
         written = write(m_fd_response, res.data, res.data_length);
         if (written == -1) {
             m_testing_receiver->log_error_message("Could not send the data to the response pipe!");
             return false;
         }
 
-        m_started = true;
-
         return true;
     }
 
     bool pipe_testing_communication::receive_request(){
 
-        // Data should look like this: length (4 bytes), Command (1 byte), data (? bytes)
+        // Request structure:
+        // 0     Byte: Command
+        // 1 - 4 Byte: Data length (uint32)
+        // 5 - ? Byte: Data
+
+        // Check if communication started.
+        if(!m_started){
+            m_testing_receiver->log_error_message("Communication not started!");
+            return false;
+        }
+
+        // Creating a buffer for the command and data length.
+        char buffer[sizeof(uint32_t)+1];
 
         // Read the length. This is blocking until sizeof(length) bytes are there (or an error).
         size_t length = 0;
-        ssize_t bytes_read = read(m_fd_request, &length, sizeof(length)); 
-        if(bytes_read != sizeof(length)){
-            m_testing_receiver->log_error_message("There was an error reading the length of the request from the request pipe.");  
+        ssize_t bytes_read = read(m_fd_request, buffer, sizeof(uint32_t)+1); 
+        if(bytes_read != sizeof(uint32_t)+1){
+            m_testing_receiver->log_error_message("There was an error reading the command anf length of the request from the request pipe.");  
             return false;
         }
 
-        if(length < 1){
+        if(bytes_read < 1){
             m_testing_receiver->log_error_message("Message was too short for a valid request!");  
             return false;
         }
+
+        // Creating new request.
+        m_current_req = request();
+
+        // Extract command and data length.
+        m_current_req.cmd = (testing::command)buffer[0];
+        m_current_req.data_length = testing_communication::bytes_to_int32(buffer, 1);
 
         // Clearing old data if exist.
         if(m_current_req.data != nullptr){
@@ -81,18 +106,8 @@ namespace testing{
             m_current_req.data = nullptr;
         }
 
-        // Creating new request.
-        m_current_req = request();
-        m_current_req.data_length = length-1;
-
-        bytes_read = read(m_fd_request, &m_current_req.cmd, sizeof(m_current_req.cmd)); 
-        if(bytes_read != sizeof(m_current_req.cmd)){
-            m_testing_receiver->log_error_message("There was an error reading the command of the request from the request pipe: %s.", strerror(errno));  
-            return false;
-        }
-
         // Receive data if data is expected.
-        if(length > 1){
+        if(m_current_req.data_length > 1){
             // Allocating memory for data according to the length.
             m_current_req.data = (char*)malloc(m_current_req.data_length);
 
@@ -118,6 +133,12 @@ namespace testing{
 
                 if(error_count >= PIPE_READ_ERROR_MAX){
                     m_testing_receiver->log_error_message("Maximum of %d error reached while receiving data.", PIPE_READ_ERROR_MAX);
+                    
+                    // Resetting 
+                    m_current_req.data_length = 0;
+                    free(m_current_req.data);
+                    m_current_req.data = nullptr;
+
                     return false;
                 }
 

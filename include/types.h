@@ -32,14 +32,14 @@ namespace testing{
     struct request{
         command cmd;
         char* data = nullptr;
-        size_t data_length = 0;
+        uint32_t data_length = 0;
     };
 
     // Represents a response of the testing interface, which contains of an response status and the response data.
     struct response{
         status response_status;
         char* data = nullptr;
-        size_t data_length = 0;
+        uint32_t data_length = 0;
     };
 }
 

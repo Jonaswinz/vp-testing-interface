@@ -11,6 +11,7 @@ set(sources
     ${src}/mq_testing_communication.cpp
     ${src}/pipe_testing_communication.cpp
     ${src}/mq_testing_client.cpp
+    ${src}/pipe_testing_client.cpp
 )
 
 # Create the library (Choose STATIC or SHARED)
