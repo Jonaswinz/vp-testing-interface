@@ -27,17 +27,13 @@ namespace testing{
         m_attr.mq_msgsize = MQ_REQUEST_LENGTH;
         m_attr.mq_curmsgs = 0;
 
-        // Clears "lost" data from both message queues.
-        clear_mq(m_mq_request_name);
-        clear_mq(m_mq_response_name);
-
         // Openens both message queues.
-        if ((m_mqt_requests = mq_open(m_mq_request_name, O_RDONLY | O_CREAT, 0660, &m_attr)) == -1) {
+        if ((m_mqt_requests = mq_open(m_mq_request_name, O_RDONLY, 0660, &m_attr)) == -1) {
             m_testing_receiver->log_error_message("Error opening request message queue %s.", m_mq_request_name);
             return false;
         }
 
-        if ((m_mqt_responses = mq_open(m_mq_response_name, O_WRONLY | O_CREAT, 0644, &m_attr)) == -1) {
+        if ((m_mqt_responses = mq_open(m_mq_response_name, O_WRONLY, 0644, &m_attr)) == -1) {
             m_testing_receiver->log_error_message("Error opening response message queue %s.", m_mq_response_name);
             return false;
         }
@@ -121,29 +117,5 @@ namespace testing{
         }
 
         return true;
-    }
-
-    void mq_testing_communication::clear_mq(const char* queue_name) {
-        mqd_t mqd = mq_open(queue_name, O_RDONLY | O_NONBLOCK);
-        if (mqd == -1) {
-            return;
-        }
-
-        struct mq_attr attr;
-        mq_getattr(mqd, &attr);
-        char* buffer = new char[attr.mq_msgsize];
-
-        while (true) {
-            ssize_t bytes_read = mq_receive(mqd, buffer, attr.mq_msgsize, NULL);
-            if (bytes_read == -1) {
-                if (errno == EAGAIN) {
-                    m_testing_receiver->log_info_message("Message queue %s is now empty.", queue_name);
-                    break;
-                }
-            }
-        }
-
-        delete[] buffer;
-        mq_close(mqd);
     }
 };

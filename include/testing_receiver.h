@@ -111,10 +111,7 @@ namespace testing{
 
             // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds multiple elements (element_count) to the MMIO read queue for the given address and length. When a read occures and there is a suitable element in the read queue (fits address and length) it will be written to the request and the simulation will not be suspended and MMIO_WRITE event not be triggered. If there a multiple suitable elements, the first in the queue will be picked. Value must contain the elements after another. 
             virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, size_t element_count, char* value) = 0;
-
-            // Virtual function to handle a WRITE_MMIO command. Needs to be overwritten. With this function MMIO data can be written to 
-            virtual status handle_write_mmio(uint64_t address, uint64_t length, char* value) = 0;
-
+            
             // Virtual function to handle a TRIGGER_CPU_INTERRUPT command. Needs to be overwritten. With this function a CPU ISR can be triggered manually by its ID.
             virtual status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
 

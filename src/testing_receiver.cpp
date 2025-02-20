@@ -366,24 +366,6 @@ namespace testing{
                 break;
             }
 
-            case WRITE_MMIO:
-            {   
-                // Expect minimum 9 bytes of data: 8 bytes address, 8 bytes length.
-                if(!check_min_request_length(req, res, 16)) return;
-                
-                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
-                uint64_t length = testing_communication::bytes_to_int64(req.data, 8);
-
-                // Check if the total length matches
-                if(!check_exact_request_length(req, res, 16+length)) return;
-
-                res.response_status = handle_write_mmio(address, length, &req.data[16]);
-                res.data = nullptr;
-                res.data_length = 0;
-
-                break;
-            }
-
             case TRIGGER_CPU_INTERRUPT:
             {   
                 // Expect minimum 1 bytes of data: interrupt index
