@@ -16,7 +16,7 @@ class test_testing_receiver: public testing::testing_receiver{
     protected:
 
         void log_info_message(const char* fmt, ...){
-            std::cout << "[INFO]: ";
+            std::cout << "[VP INFO]: ";
             va_list args;
             va_start(args, fmt);
             char buffer[1024];  // Buffer for formatted message
@@ -26,7 +26,7 @@ class test_testing_receiver: public testing::testing_receiver{
         }
 
         void log_error_message(const char* fmt, ...){
-            std::cout << "[ERROR]: ";
+            std::cout << "[VP ERROR]: ";
             va_list args;
             va_start(args, fmt);
             char buffer[1024];  // Buffer for formatted message

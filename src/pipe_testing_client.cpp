@@ -19,40 +19,41 @@ namespace testing{
     bool pipe_testing_client::start(){
 
         if (pipe(m_request_pipe) == -1 || pipe(m_response_pipe) == -1) {
-            std::cout << "ERROR: Error creating new pipes!" << std::endl;
+            log_error_message("Error creating new pipes: %s", strerror(errno));
             return false;
         }
 
         if(dup2(m_request_pipe[0], m_request_fd)  == -1 || dup2(m_response_pipe[1], m_response_fd) == -1){
-            std::cout << "ERROR: Error setting file descriptor of pipes." << std::endl;
+            log_error_message("Error setting file descriptor of pipes: %s", strerror(errno));
             return false;
         }
 
         return true;
     }
 
-    void pipe_testing_client::wait_for_ready(){
+    bool pipe_testing_client::wait_for_ready(){
         char buffer[6];
 
         while (true) {
             ssize_t bytes_read = read(m_response_pipe[0], buffer, 6);
 
             if (bytes_read == -1) {
-                std::cout << "ERROR: An error occurred while waiting for ready message " << strerror(errno) << std::endl;
-                break;
+                log_error_message("An error occurred while waiting for ready message: %s", strerror(errno));
+                return false;
             }
 
             buffer[bytes_read] = '\0'; // Ensure null-termination for valid C-string
             std::string message(buffer);
             if (message == "ready") {
-                std::cout << "Received ready message" << std::endl;
+                log_info_message("Received ready message");
 
                 // Indicate ready.
                 m_started = true;
-
                 break;
             }
         }
+
+        return true;
     }
 
     bool pipe_testing_client::send_request(request* req, response* res) {
@@ -69,7 +70,7 @@ namespace testing{
 
         // Check if communication started.
         if(!m_started){
-            std::cout << "ERROR: communication not started!" << std::endl;
+            log_error_message("Communication not started!");
             return false;
         }
 
@@ -83,28 +84,28 @@ namespace testing{
         // Send this buffer.
         ssize_t written = write(m_request_pipe[1], buffer, sizeof(uint32_t)+1);
         if (written == -1) {
-            std::cout << "ERROR: Could not send command and data length to the request pipe!";
+            log_error_message("Could not send command and data length to the request pipe: %s", strerror(errno));
             return false;
         }
 
         // Send data.
         written = write(m_request_pipe[1], req->data, req->data_length);
         if (written == -1) {
-            std::cout << "ERROR: Could not send data to the request pipe!";
+            log_error_message("Could not send data to the request pipe: %s", strerror(errno));
             return false;
         }
 
-        std::cout << "SENT: " << req->request_command << " with length " << req->data_length << std::endl;
+        log_info_message("SENT: %d with length %d.", req->request_command, req->data_length);
 
         // Waiting for status and data length and write it to the same buffer.
         ssize_t bytes_read = read(m_response_pipe[0], buffer, sizeof(uint32_t)+1); 
         if(bytes_read != sizeof(uint32_t)+1){
-            std::cout << "ERROR: There was an error reading the status and data length from the request pipe.";
+            log_error_message("There was an error reading the status and data length from the request pipe: %s", strerror(errno));
             return false;
         }
 
         if(bytes_read < 1){
-            std::cout << "ERROR: Received data is to short for a valid response!";
+            log_error_message("Received data is to short for a valid response!");
             return false;
         }
 
@@ -128,17 +129,17 @@ namespace testing{
 
                 // Error handling
                 if (bytes_read == -1) {
-                    std::cout << "ERROR: There was an error reading the data of the request from the request pipe.";
+                    log_error_message("There was an error reading the data of the request from the request pipe: %s", strerror(errno));
                     error_count ++;
                 } else if (bytes_read == 0) {
-                    std::cout << "ERROR: Request pipe end of data reached, but not full data received!";
+                    log_error_message("Request pipe end of data reached, but not full data received!");
                     error_count ++;
                 }else{
                     received_length += bytes_read;
                 }
 
                 if(error_count >= PIPE_READ_ERROR_MAX){
-                    std::cout << "ERROR: Maximum errors reached while receiving data.";
+                    log_error_message("Maximum errors reached while receiving data.");
                     
                     // Resetting 
                     res->response_status = STATUS_ERROR;
@@ -152,7 +153,7 @@ namespace testing{
             }
         }
 
-        std::cout << "RECEIVED: " << res->response_status << " with length " << res->data_length << std::endl;
+        log_info_message("RECEIVED: %d with length %d.", res->response_status, res->data_length);
 
         return true;
     }
@@ -167,11 +168,12 @@ namespace testing{
 
         // Read until the pipe is empty
         while ((bytesRead = read(fd, buffer, sizeof(buffer))) > 0) {
-            std::cout << "Cleared " << bytesRead << " bytes from pipe." << std::endl;
+            log_info_message("RCleared %d bytes from pipe with fd %d.", bytesRead, fd);
+
         }
 
         if (bytesRead == -1 && errno != EAGAIN) {
-            std::cout << "ERROR: Error reading from pipe while clearing!" << std::endl;
+            log_error_message("Error reading from pipe while clearing: %s", strerror(errno));
         }
 
         // Restore original pipe flags

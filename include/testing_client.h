@@ -19,10 +19,20 @@ namespace testing{
             virtual bool start() = 0;
 
             // Virtual function to wait for the ready message on the interface. Needs to be overwritten.
-            virtual void wait_for_ready() = 0;
+            virtual bool wait_for_ready() = 0;
 
             // Virtual function to send a request and wait for the response (and fill the response). Needs to be overwritten.
             virtual bool send_request(request* req, response* res) = 0;
+
+            // Function that does not do any logging.
+            static void no_logging(const char* fmt, ...){};
+
+            // Pointer to a function for info logging. It points to the no_logging function by default.
+            void (*log_info_message)(const char* fmt, ...) = no_logging;
+
+            // Pointer to a function for error logging. It points to the no_logging function by default.
+            void (*log_error_message)(const char* fmt, ...) = no_logging;
+
         protected:
 
             // Indicates if the communication was started.
@@ -40,7 +50,7 @@ namespace testing{
             bool start() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response message queue.
-            void wait_for_ready() override;
+            bool wait_for_ready() override;
 
             // Implemented send_request function, which uses the message queues. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;
@@ -76,7 +86,7 @@ namespace testing{
             bool start() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response pipe.
-            void wait_for_ready() override;
+            bool wait_for_ready() override;
 
             // Implemented send_request function, which uses the pipes. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;

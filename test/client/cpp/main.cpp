@@ -1,11 +1,33 @@
 #include "testing_client.h"
 
+#include <cstdarg>
+
+void info_logging(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    std::cout << "[Client INFO]: ";
+    vprintf(fmt, args);
+    std::cout << std::endl;
+    va_end(args); 
+}
+
+void error_logging(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    std::cout << "[Client ERROR]: ";
+    vprintf(fmt, args);
+    std::cout << std::endl;
+    va_end(args); 
+}
+
 int main() {
     std::cout << "Testing client for vp-testing-interface!" << std::endl;
 
     //testing::mq_testing_client client = testing::mq_testing_client("/test-request", "/test-response");
     testing::pipe_testing_client client = testing::pipe_testing_client(10, 11);
 
+    client.log_error_message = error_logging;
+    client.log_info_message = info_logging;
     client.start();
 
     // This client needs to start the VP process in order to allow pipe communication. This is not needed with message queues (there both process can be started seperatly).

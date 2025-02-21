@@ -30,19 +30,19 @@ namespace testing{
 
         // Openens both message queues and create them if not exist.
         if ((m_mqt_requests = mq_open(m_request_name.c_str(), O_WRONLY | O_CREAT, 0644, &m_attr)) == -1) {
-            std::cout << "ERROR: Error opening request message queue." << std::endl;
+            log_error_message("Error opening request message queue: %s", strerror(errno));
             return false;
         }
 
         if ((m_mqt_responses = mq_open(m_response_name.c_str(), O_RDONLY | O_CREAT, 0660, &m_attr)) == -1) {
-            std::cout << "ERROR: Error opening response message queue." << std::endl;
+            log_error_message("Error opening response message queue: %s", strerror(errno));
             return false;
         }
 
         return true;
     }
 
-    void mq_testing_client::wait_for_ready(){
+    bool mq_testing_client::wait_for_ready(){
         char buffer[MQ_MAX_LENGTH];
 
         // Waiting for "ready" string of response message queue.
@@ -50,21 +50,22 @@ namespace testing{
             ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, 0);
 
             if (bytes_read == -1) {
-                std::cout << "ERROR: An error occurred while waiting for ready message: " << strerror(errno) << std::endl;
-                return;
+                log_error_message("An error occurred while waiting for ready message: %s", strerror(errno));
+                return false;
             }
 
             buffer[bytes_read] = '\0'; // Ensure null-termination for valid string.
             std::string message(buffer);
             if (message == "ready") {
-                std::cout << "Received ready message!" << std::endl;
+                log_info_message("Received ready message!");
 
                 // Indicate ready.
                 m_started = true;
-
                 break;
             }
         }
+
+        return true;
     }
 
     bool mq_testing_client::send_request(request* req, response* res) {
@@ -80,13 +81,13 @@ namespace testing{
 
         // Check if communication started.
         if(!m_started){
-            std::cout << "ERROR: communication not started!" << std::endl;
+            log_error_message("Communication not started!");
             return false;
         }
 
         // Check if request (command and data) fits in one message (currently only supported that the request is only one message).
         if(req->data_length+1 > MQ_MAX_LENGTH){
-            std::cout << "ERROR: When using MQ the request cannot be larget than the defined max length!" << std::endl;
+            log_error_message("When using MQ the request cannot be larget than the defined max length!");
         }
 
         // Creating a buffer for sending and receiving data.
@@ -98,21 +99,21 @@ namespace testing{
 
         // Send this buffer.
         if (mq_send(m_mqt_requests, buffer, req->data_length+1, 0) == -1) {
-            std::cout << "ERROR: Error sending message " << strerror(errno) << std::endl;
+            log_error_message("Error sending message: %s", strerror(errno));
             return false;
         }
 
-        std::cout << "SENT: " << req->request_command << " with length " << req->data_length << std::endl;
+        log_info_message("SENT: %d with length %d.", req->request_command, req->data_length);
 
         // Waiting for a message and writing it to the same buffer.
         ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, NULL);
         if (bytes_read == -1) {
-            std::cout << "ERROR: Error receiving message " << strerror(errno) << std::endl;
+            log_error_message("Error receiving message: %s", strerror(errno));
             return false;
         }
 
         if (bytes_read < 1) {
-            std::cout << "ERROR: Message was too short for a valid request!" << std::endl;
+            log_error_message("Received message was too short for a valid request!");
             return false;
         }
 
@@ -131,7 +132,7 @@ namespace testing{
             std::memcpy(res->data, buffer+1, bytes_read-1);
         }
 
-        std::cout << "RECEIVED: " << res->response_status << " with length " << res->data_length << std::endl;
+        log_info_message("RECEIVED: %d with length %d.", res->response_status, res->data_length);
 
         return true;
     }
@@ -148,7 +149,7 @@ namespace testing{
             ssize_t bytes_read = mq_receive(mqd, buffer, MQ_MAX_LENGTH, NULL);
             if (bytes_read == -1) {
                 if (errno == EAGAIN) {
-                    std::cout << "Message queue " << queue_name << " is now empty." << std::endl;
+                    log_info_message("Message queue %s is now empty!", queue_name);
                     break;
                 }
             }

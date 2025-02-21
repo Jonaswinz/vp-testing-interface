@@ -64,8 +64,9 @@ This diagram shows the relations between the classes and all virtual functions. 
 
 
 ## Improvements / Future Ideas:
-- Reponse timeout for testing_client
-- Client library for communication
-- CPU interrupt event
-- Support for multiple different MMIO probes
+- Reponse timeout for testing_client.
+- Helper function to build requests in testing_client.
+- Client library for communication.
+- CPU interrupt event.
+- Support for multiple different MMIO probes.
 - Handle multiple request at once: faster performance for specific cases.
