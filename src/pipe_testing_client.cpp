@@ -24,7 +24,7 @@ namespace testing{
         }
 
         if(dup2(m_request_pipe[0], m_request_fd)  == -1 || dup2(m_response_pipe[1], m_response_fd) == -1){
-            std::cout << "Error setting file descriptor of pipes." << std::endl;
+            std::cout << "ERROR: Error setting file descriptor of pipes." << std::endl;
             return false;
         }
 
@@ -77,29 +77,29 @@ namespace testing{
         char buffer[sizeof(uint32_t)+1];
 
         // Copy command and data length into one buffer.
-        buffer[0] = req->cmd;
+        buffer[0] = req->request_command;
         testing_communication::int32_to_bytes(req->data_length, buffer, 1);
 
         // Send this buffer.
         ssize_t written = write(m_request_pipe[1], buffer, sizeof(uint32_t)+1);
         if (written == -1) {
-            std::cout << "Could not send command and data length to the request pipe!";
+            std::cout << "ERROR: Could not send command and data length to the request pipe!";
             return false;
         }
 
         // Send data.
         written = write(m_request_pipe[1], req->data, req->data_length);
         if (written == -1) {
-            std::cout << "Could not send data to the request pipe!";
+            std::cout << "ERROR: Could not send data to the request pipe!";
             return false;
         }
 
-        std::cout << "SENT: " << req->cmd << " with length " << req->data_length << std::endl;
+        std::cout << "SENT: " << req->request_command << " with length " << req->data_length << std::endl;
 
         // Waiting for status and data length and write it to the same buffer.
         ssize_t bytes_read = read(m_response_pipe[0], buffer, sizeof(uint32_t)+1); 
         if(bytes_read != sizeof(uint32_t)+1){
-            std::cout << "There was an error reading the status and data length from the request pipe.";
+            std::cout << "ERROR: There was an error reading the status and data length from the request pipe.";
             return false;
         }
 
@@ -171,7 +171,7 @@ namespace testing{
         }
 
         if (bytesRead == -1 && errno != EAGAIN) {
-            std::cout << "Error reading from pipe while clearing!" << std::endl;
+            std::cout << "ERROR: Error reading from pipe while clearing!" << std::endl;
         }
 
         // Restore original pipe flags

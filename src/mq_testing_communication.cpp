@@ -119,7 +119,7 @@ namespace testing{
         // Updating the m_current_req variable with the new request.
         m_current_req = request();
         m_current_req.data_length = bytes_read-1;
-        m_current_req.cmd = (command)buffer[0];
+        m_current_req.request_command = (command)buffer[0];
         if(bytes_read > 1){
             m_current_req.data = (char*)malloc(bytes_read-1);
             std::memcpy(m_current_req.data, buffer+1, bytes_read-1);

@@ -36,7 +36,10 @@ class test_testing_receiver: public testing::testing_receiver{
         }
 
         testing::status handle_continue(testing::event &last_event){
-            last_event = testing::BREAKPOINT_HIT;
+
+            char* test = (char*)malloc(5);
+
+            last_event = testing::event{testing::BREAKPOINT_HIT, test, 5};
             return testing::STATUS_OK;
         }
 

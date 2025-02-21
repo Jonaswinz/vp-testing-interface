@@ -15,7 +15,7 @@ namespace testing{
 
     // Possible commands.
     enum command{
-        CONTINUE, KILL, SET_BREAKPOINT, REMOVE_BREAKPOINT, ENABLE_MMIO_TRACKING, DISABLE_MMIO_TRACKING, SET_MMIO_READ, ADD_TO_MMIO_READ_QUEUE, TRIGGER_CPU_INTERRUPT, ENABLE_CODE_COVERAGE, DISABLE_CODE_COVERAGE, GET_CODE_COVERAGE, GET_CODE_COVERAGE_SHM, RESET_CODE_COVERAGE, SET_RETURN_CODE_ADDRESS, GET_RETURN_CODE, DO_RUN, DO_RUN_SHM
+        CONTINUE, KILL, SET_BREAKPOINT, REMOVE_BREAKPOINT, ENABLE_MMIO_TRACKING, DISABLE_MMIO_TRACKING, SET_MMIO_VALUE, ADD_TO_MMIO_READ_QUEUE, TRIGGER_CPU_INTERRUPT, ENABLE_CODE_COVERAGE, DISABLE_CODE_COVERAGE, GET_CODE_COVERAGE, GET_CODE_COVERAGE_SHM, RESET_CODE_COVERAGE, SET_RETURN_CODE_ADDRESS, GET_RETURN_CODE, DO_RUN, DO_RUN_SHM
     };
 
     // Possible return status codes.
@@ -24,13 +24,19 @@ namespace testing{
     };
 
     // Possible events that the simulation can produce.
-    enum event{
+    enum event_type{
         MMIO_READ, MMIO_WRITE, VP_END, BREAKPOINT_HIT
+    };
+
+    struct event{
+        event_type event;
+        char* addition_data = nullptr;
+        uint32_t additional_data_length = 0;
     };
     
     // Represents a request send to the implemented testing interface with a command ID and flexible length data.
     struct request{
-        command cmd;
+        command request_command;
         char* data = nullptr;
         uint32_t data_length = 0;
     };

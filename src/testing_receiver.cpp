@@ -134,7 +134,7 @@ namespace testing{
                 m_current_req = m_communication->get_request();
                 m_current_res = response();
 
-                log_info_message("Successfully received request with command: %d", (uint8_t)m_current_req.cmd);
+                log_info_message("Successfully received request with command: %d", (uint8_t)m_current_req.request_command);
 
                 //Handling request
                 handle_request(m_current_req, m_current_res);
@@ -142,9 +142,9 @@ namespace testing{
                 //TODO return status
 
                 if(m_communication->send_response(m_current_res)){
-                    log_info_message("Successfully sent response for command: %d", (uint8_t)m_current_req.cmd);
+                    log_info_message("Successfully sent response for command: %d", (uint8_t)m_current_req.request_command);
                 }else{
-                    log_error_message("Could not send response for command: %d", (uint8_t)m_current_req.cmd);
+                    log_error_message("Could not send response for command: %d", (uint8_t)m_current_req.request_command);
                 }
 
                 //Clearing response data. Request data is cleared by m_communication.
@@ -179,6 +179,39 @@ namespace testing{
 
         //Notify new event.
         sem_post(&m_full_slots);
+    }
+
+    void testing_receiver::notify_MMIO_READ_event(uint64_t address, uint32_t length){
+        
+        char* buffer = (char *)malloc(12);
+        testing_communication::int64_to_bytes(address, buffer, 0);
+        testing_communication::int32_to_bytes(length, buffer, 8);
+
+        notify_event(event{MMIO_READ, buffer, 12});
+    }
+
+    void testing_receiver::notify_MMIO_WRITE_event(uint64_t address, uint32_t length, char* data){
+
+        char* buffer = (char *)malloc(12+length);
+        testing_communication::int64_to_bytes(address, buffer, 0);
+        testing_communication::int32_to_bytes(length, buffer, 8);
+        memcpy(buffer+12, data, length);
+
+        notify_event(event{MMIO_READ, buffer, 12+length});
+    }
+
+    void testing_receiver::notify_VP_END_event(){
+        notify_event(event{VP_END, nullptr, 0});
+    }
+
+    void testing_receiver::notify_BREAKPOINT_HIT_event(std::string &symbol_name){
+        char* buffer = (char *)malloc(symbol_name.size()+1);
+        memcpy(buffer, symbol_name.c_str(), symbol_name.size());
+
+        // Termination character.
+        buffer[symbol_name.size()] = 0;
+
+        notify_event(event{BREAKPOINT_HIT, buffer, (uint32_t)symbol_name.size()+1});
     }
 
     void testing_receiver::wait_for_event(){
@@ -243,21 +276,27 @@ namespace testing{
         // This switch statement calles the right handler functions.
         // When there is response data, it will be allocated and assigned to the response. This memory will be freed when the response is sent.
 
-        switch(req.cmd){
+        switch(req.request_command){
 
             case CONTINUE:
             {
                 // Checks request length to be as expected and if not also changes the response to contain STATUS_MALFORMED.
                 if(!check_exact_request_length(req, res, 0)) return;
                 
-                // Creates response data array with the required length.
-                res.data_length = sizeof(event);
-                res.data = (char*)malloc(res.data_length);
-                
                 // Runs he handle function and copys the data to the response data.
                 event last_event;
                 res.response_status = handle_continue(last_event);
-                memcpy(res.data, &last_event, sizeof(event));
+
+                // Creates response data array with the required length.
+                res.data_length = last_event.additional_data_length+1;
+                res.data = (char*)malloc(res.data_length);
+                
+                // Write event type and additional data to response data.
+                res.data[0] = (char)last_event.event;
+                memcpy(res.data+1, last_event.addition_data, last_event.additional_data_length);
+                
+                // Freeing additional data.
+                if(last_event.addition_data != nullptr) free(last_event.addition_data);
 
                 break;
             }
@@ -335,7 +374,7 @@ namespace testing{
                 break;
             }
 
-            case SET_MMIO_READ:
+            case SET_MMIO_VALUE:
             {   
                 // Expect minimum 1 bytes of data: min. 1 byte of mmio data.
                 if(!check_min_request_length(req, res, 1)) return;
@@ -550,7 +589,7 @@ namespace testing{
 
             default:
             {
-                log_info_message("Command %d not found!", req.cmd);
+                log_info_message("Command %d not found!", req.request_command);
                 break;
             }
 

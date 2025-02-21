@@ -97,7 +97,7 @@ namespace testing{
         m_current_req = request();
 
         // Extract command and data length.
-        m_current_req.cmd = (testing::command)buffer[0];
+        m_current_req.request_command = (testing::command)buffer[0];
         m_current_req.data_length = testing_communication::bytes_to_int32(buffer, 1);
 
         // Clearing old data if exist.

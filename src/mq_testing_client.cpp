@@ -93,7 +93,7 @@ namespace testing{
         char buffer[MQ_MAX_LENGTH];
 
         // Copy command and data into one buffer.
-        buffer[0] = req->cmd;
+        buffer[0] = req->request_command;
         memcpy(buffer+1, req->data, req->data_length);
 
         // Send this buffer.
@@ -102,7 +102,7 @@ namespace testing{
             return false;
         }
 
-        std::cout << "SENT: " << req->cmd << " with length " << req->data_length << std::endl;
+        std::cout << "SENT: " << req->request_command << " with length " << req->data_length << std::endl;
 
         // Waiting for a message and writing it to the same buffer.
         ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, NULL);

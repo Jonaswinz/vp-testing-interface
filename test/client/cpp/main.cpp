@@ -24,7 +24,7 @@ int main() {
     client.wait_for_ready();
 
     testing::request req = testing::request();
-    req.cmd = testing::CONTINUE;
+    req.request_command = testing::CONTINUE;
     req.data = nullptr;
     req.data_length = 0;
 

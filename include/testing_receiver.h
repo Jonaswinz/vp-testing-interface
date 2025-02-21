@@ -57,8 +57,20 @@ namespace testing{
             // Function that blocks until all events are processes, via the m_empty_slots mutex.
             void wait_for_events_processes();
 
-            // Function that notifies the receiver an occourance of an new event, via the m_full_slots mutex.
+            // Function that notifies the receiver an occourance of an new event, via the m_full_slots mutex. The event will also be added to the event queue. The malloc and freeing of the additional data is not managed inside testing_receiver!
             void notify_event(event new_event);
+            
+            // Helper for notifiying and adding MMIO_READ event. Allocats the memory for the additional data.
+            void notify_MMIO_READ_event(uint64_t address, uint32_t length);
+
+            // Helper for notifiying and adding MMIO_WRITE event. Allocats the memory for the additional data.
+            void notify_MMIO_WRITE_event(uint64_t address, uint32_t length, char* data);
+
+            // Helper for notifiying and adding VP_END event.
+            void notify_VP_END_event();
+
+            // Helper for notifiying and adding BREAKPOINT_HIT event. Allocats the memory for the additional data.
+            void notify_BREAKPOINT_HIT_event(std::string &symbol_name);
 
             // Function that blocks until a new event occoured, via the m_full_slots mutex.
             void wait_for_event();
@@ -66,7 +78,7 @@ namespace testing{
             // Checks if the event queue is empty.
             bool is_event_queue_empty();
 
-            // Getter for the first event of the event queue. This will also remove this first event.
+            // Getter for the first event of the event queue. This will also remove this first event. Freeing of the additional data is not managed inside testing_receiver and must called after the dat is used!
             event get_and_remove_first_event();
 
             // Function to reset the code coverage, by writing zeros to m_bb_array.
@@ -89,7 +101,7 @@ namespace testing{
             // Function to handle a request by its pointer and filling the given response. This function will call the handler that corresponds to the request command.
             void handle_request(request &req, response &res);
 
-            // Virtual function to handle a CONTINUE command. Needs to be overwritten. This function will write the first element in the event queue to last_event and removes it from the queue. If the queue is empty after this call the simulation will be resumed, because all events were handeled / returned.
+            // Virtual function to handle a CONTINUE command. Needs to be overwritten. This function will write the first element in the event queue to last_event and removes it from the queue. If the queue is empty after this call the simulation will be resumed, because all events were handeled / returned. The additional data of the event will be freed by the handle_request function.
             virtual status handle_continue(event &last_event) = 0;
 
             // Virtual function to handle a KILL command. Needs to be overwritten. The boolean gracefully determines if the simulation and whole vp gets killed immediately or shuts down gracefully. If gracefully is set to true, it may take longer for the VP to shut down. It may also be the case that, if the simulation does not terminated, the VP never shuts down.
