@@ -119,8 +119,8 @@ namespace testing{
             // Virtual function to handle a DISABLE_MMIO_TRACKING command. Needs to be overwritten. This will disalbe the mmio tracking.
             virtual status handle_disable_mmio_tracking() = 0;
 
-            // Virtual function to handle a SET_MMIO_READ command. Needs to be overwritten. This function sets the read (and intercepted) MMIO data after a MMIO_READ event. For this mmio tracking must be enabled.
-            virtual status handle_set_mmio_read(size_t length, char* value) = 0;
+            // Virtual function to handle a SET_MMIO_VALUE command. Needs to be overwritten. This function sets the read (and intercepted) MMIO data after a MMIO_READ event. For this mmio tracking must be enabled.
+            virtual status handle_set_mmio_value(size_t length, char* value) = 0;
 
             // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds multiple elements (element_count) to the MMIO read queue for the given address and length. When a read occures and there is a suitable element in the read queue (fits address and length) it will be written to the request and the simulation will not be suspended and MMIO_WRITE event not be triggered. If there a multiple suitable elements, the first in the queue will be picked. Value must contain the elements after another. 
             virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, size_t element_count, char* value) = 0;

@@ -381,7 +381,7 @@ namespace testing{
                 // Expect minimum 1 bytes of data: min. 1 byte of mmio data.
                 if(!check_min_request_length(req, res, 1)) return;
 
-                res.response_status = handle_set_mmio_read(res.data_length, &req.data[4]);
+                res.response_status = handle_set_mmio_value(res.data_length, &req.data[4]);
                 res.data = nullptr;
                 res.data_length = 0;
 
