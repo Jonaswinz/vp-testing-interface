@@ -138,13 +138,13 @@ namespace testing{
             virtual status handle_disable_code_coverage() = 0;
 
             // Virtual function to handle a GET_CODE_COVERAGE command. This will return the code coverage array as a string.
-            virtual std::string handle_get_code_coverage() = 0;
+            virtual status handle_get_code_coverage(std::string* coverage) = 0;
 
             // Virtual function to handle a SET_RETURN_CODE_ADDRESS command. This will set the address and register name of the return code that should be saved. A breakpoint will be set to this address and if the breakpoint is hit, the value of the register witht the given name is saved.
             virtual status handle_set_return_code_address(uint64_t address, std::string reg_name) = 0;
 
-            // Virtual function to handle a GET_RETURN_CODE command. This will return the saved return code. Where and which register should be saved as the return code can be set via SET_RETURN_CODE_ADDRESS.
-            virtual uint64_t handle_get_return_code() = 0;
+            // Virtual function to handle a GET_RETURN_CODE command. This will return the saved return code. Where and which register should be saved as the return code can be set via SET_RETURN_CODE_ADDRESS. The recording of the return code will be resetted after this call.
+            virtual status handle_get_return_code(uint64_t &code) = 0;
 
             // Virtual function to handle a DO_RUN command. This does one run 
             virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, size_t mmio_element_count, char* mmio_value) = 0;

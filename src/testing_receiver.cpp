@@ -447,12 +447,19 @@ namespace testing{
             {
                 if(!check_exact_request_length(req, res, 0)) return;
 
-                std::string coverage = handle_get_code_coverage();
+                std::string* coverage = nullptr;
+                
+                res.response_status = handle_get_code_coverage(coverage);
 
-                res.data = (char*)malloc(coverage.size()+4);
-                testing_communication::int32_to_bytes(coverage.size(), res.data, 0);
-                memcpy(res.data+4, coverage.c_str(), coverage.size());
-                res.data_length = coverage.size()+4;
+                if(coverage != nullptr){
+                    res.data = (char*)malloc(coverage->size()+4);
+                    testing_communication::int32_to_bytes(coverage->size(), res.data, 0);
+                    memcpy(res.data+4, coverage->c_str(), coverage->size());
+                    res.data_length = coverage->size()+4;
+                }else{
+                    log_error_message("The coverage string was a nullptr!");
+                    res.response_status = STATUS_ERROR;
+                }
 
                 break;
             }
@@ -504,9 +511,10 @@ namespace testing{
             {   
                 if(!check_exact_request_length(req, res, 0)) return;
 
+                uint64_t exit_code;
+                res.response_status = handle_get_return_code(exit_code);               
                 res.data_length = sizeof(uint64_t);
-                res.data = (char*)malloc(res.data_length);
-                uint64_t exit_code = handle_get_return_code();                
+                res.data = (char*)malloc(res.data_length); 
                 testing_communication::int64_to_bytes(exit_code, res.data, 0);
 
                 break;
