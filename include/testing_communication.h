@@ -55,6 +55,9 @@ namespace testing{
             // Copying a 64bit integer from a buffer at a start index MSB.
             static int64_t bytes_to_int64(const char* buffer, size_t start);
 
+            // Checks if a uint64_t can be safely casted to uint32_t.
+            static bool check_cast_to_uint32(uint64_t value);
+
         protected:
 
             // Pointer to the test_receiver that was specified during construction. With this functions like logging can be accessed of the test_receiver.

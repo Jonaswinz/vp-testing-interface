@@ -64,7 +64,7 @@ namespace testing{
 
         // Check if response (command and data) fits in one message (currently only supported that the response is only one message).
         if(res.data_length+1 > MQ_MAX_LENGTH){
-            m_testing_receiver->log_error_message("When using MQ the request cannot be larget than the defined max length!");
+            m_testing_receiver->log_error_message("When using MQ the request cannot be larger than the defined MQ_MAX_LENGTH length of %d! Please increase MQ_MAX_LENGTH or use pipe communication instead.", MQ_MAX_LENGTH);
         }
 
         // Creating a buffer for sending data.

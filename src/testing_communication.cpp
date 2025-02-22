@@ -49,4 +49,7 @@ namespace testing{
             ((int64_t)(uint8_t)buffer[start + 7]);
     }
 
+    bool testing_communication::check_cast_to_uint32(uint64_t value) {
+        return value <= std::numeric_limits<uint32_t>::max();
+    }
 }
