@@ -126,6 +126,15 @@ namespace testing{
         // Reading the response status from the buffer
         res->response_status = (status)buffer[0];
 
+        // Error checking of the response status.
+        if(res->response_status == STATUS_ERROR){
+            log_error_message("The status of the request indicated an error!");
+            return false;
+        }else if(res->response_status == STATUS_MALFORMED){
+            log_error_message("The the request was malformed!");
+            return false;
+        }
+
         res->data_length = bytes_read-1;
         if(bytes_read > 1){
             res->data = (char*)malloc(bytes_read-1);

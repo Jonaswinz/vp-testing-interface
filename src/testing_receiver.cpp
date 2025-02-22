@@ -69,7 +69,7 @@ namespace testing{
         if(stop_after_string_termination){
             // Length including the termination character
             // To not be longer than data_length the -1 is required.
-            data_length = strnlen(mmio_data, data_length - 1) + 1;
+            data_length = strnlen(mmio_data+offset, data_length - 1) + 1;
         }
 
         size_t elements = data_length / mmio_length;
@@ -77,6 +77,8 @@ namespace testing{
         if(data_length % mmio_length > 0){
             log_error_message("The shared memory segment of size %d cannot be devided by element length %d without remainder! Continuing.");
         }
+
+        log_info_message("Shared memory segment of size %d was split into %d elements (with length %d).", data_length, elements, mmio_length);
 
         status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, mmio_length, elements, mmio_data+offset);
 

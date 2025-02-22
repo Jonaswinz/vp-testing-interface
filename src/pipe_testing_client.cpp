@@ -104,13 +104,30 @@ namespace testing{
             return false;
         }
 
+        
         if(bytes_read < 1){
             log_error_message("Received data is to short for a valid response!");
             return false;
         }
 
+        // Clear old data if existed.
+        if(res->data != nullptr){
+            free(res->data);
+            res->data = nullptr;
+        }
+
         // Extract status and data length.
         res->response_status = (testing::status)buffer[0];
+
+        // Error checking of the response status.
+        if(res->response_status == STATUS_ERROR){
+            log_error_message("The status of the request indicated an error!");
+            return false;
+        }else if(res->response_status == STATUS_MALFORMED){
+            log_error_message("The the request was malformed!");
+            return false;
+        }
+
         res->data_length = testing_communication::bytes_to_int32(buffer, 1);
 
         // Receive data if data is expected.
