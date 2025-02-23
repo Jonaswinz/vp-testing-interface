@@ -44,7 +44,7 @@ namespace testing{
             void receiver_loop();
 
             // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
-            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination);
+            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination, std::string &register_name);
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
             status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
@@ -141,13 +141,13 @@ namespace testing{
             virtual status handle_get_code_coverage(std::string* coverage) = 0;
 
             // Virtual function to handle a SET_RETURN_CODE_ADDRESS command. This will set the address and register name of the return code that should be saved. A breakpoint will be set to this address and if the breakpoint is hit, the value of the register witht the given name is saved.
-            virtual status handle_set_return_code_address(uint64_t address, std::string reg_name) = 0;
+            virtual status handle_set_return_code_address(uint64_t address, std::string &reg_name) = 0;
 
             // Virtual function to handle a GET_RETURN_CODE command. This will return the saved return code. Where and which register should be saved as the return code can be set via SET_RETURN_CODE_ADDRESS. The recording of the return code will be resetted after this call.
             virtual status handle_get_return_code(uint64_t &code) = 0;
 
             // Virtual function to handle a DO_RUN command. This does one run 
-            virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, char* mmio_value) = 0;
+            virtual status handle_do_run(std::string &start_breakpoint, std::string &end_breakpoint, uint64_t mmio_address, size_t mmio_length, char* mmio_value, std::string &register_name) = 0;
 
             // Event queue
             std::deque<event> m_event_queue;

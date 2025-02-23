@@ -8,8 +8,8 @@
 
 namespace testing{
 
-     // Types of interface that exists.
-     enum communication{
+    // Types of interface that exists.
+    enum communication{
         MQ, PIPE, COMMUNICATION_COUNT
     };
 
