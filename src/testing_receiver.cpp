@@ -46,7 +46,7 @@ namespace testing{
         return true;
     }
 
-    status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, uint64_t mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination)
+    status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination)
     {
         log_info_message("Loading MMIO data from shared memory %d.", shm_id);
 
@@ -72,15 +72,7 @@ namespace testing{
             data_length = strnlen(mmio_data+offset, data_length - 1) + 1;
         }
 
-        size_t elements = data_length / mmio_length;
-
-        if(data_length % mmio_length > 0){
-            log_error_message("The shared memory segment of size %d cannot be devided by element length %d without remainder! Continuing.");
-        }
-
-        log_info_message("Shared memory segment of size %d was split into %d elements (with length %d).", data_length, elements, mmio_length);
-
-        status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, mmio_length, elements, mmio_data+offset);
+        status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, data_length, mmio_data+offset);
 
         // Detach the shared memory
         if (shmdt(mmio_data) == -1) {
@@ -390,17 +382,16 @@ namespace testing{
 
             case ADD_TO_MMIO_READ_QUEUE:
             {   
-                // Expect minimum 16 bytes of data: 8 bytes address, 4 bytes length, 4 byte element count.
-                if(!check_min_request_length(req, res, 16)) return;
+                // Expect minimum 16 bytes of data: 8 bytes address, 4 bytes length.
+                if(!check_min_request_length(req, res, 12)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
-                uint32_t elements = testing_communication::bytes_to_int32(req.data, 12);
 
                 // Check if the total length matches
-                if(!check_exact_request_length(req, res, 16+length*elements)) return;
+                if(!check_exact_request_length(req, res, 12+length)) return;
 
-                res.response_status = handle_add_to_mmio_read_queue(address, length, elements, &req.data[16]);
+                res.response_status = handle_add_to_mmio_read_queue(address, length, &req.data[12]);
                 res.data = nullptr;
                 res.data_length = 0;
 
@@ -534,22 +525,21 @@ namespace testing{
                 // (? Bytes) Data
 
                 // Min of 20 bytes length (both names at least one characters).
-                if(!check_min_request_length(req, res, 20)) return;
+                if(!check_min_request_length(req, res, 16)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
-                uint32_t elements = testing_communication::bytes_to_int32(req.data, 12);
 
-                uint8_t start_breakpoint_length = req.data[16];
-                uint8_t end_breakpoint_length = req.data[17];
+                uint8_t start_breakpoint_length = req.data[12];
+                uint8_t end_breakpoint_length = req.data[13];
                 
                 // Check again with all length combined.
-                if(!check_exact_request_length(req, res, 18+start_breakpoint_length+end_breakpoint_length+(length*elements))) return;
+                if(!check_exact_request_length(req, res, 14+start_breakpoint_length+end_breakpoint_length+length)) return;
 
-                std::string start_breakpoint(&req.data[18], start_breakpoint_length);
-                std::string end_breakpoint(&req.data[start_breakpoint_length+18], end_breakpoint_length);
+                std::string start_breakpoint(&req.data[14], start_breakpoint_length);
+                std::string end_breakpoint(&req.data[start_breakpoint_length+14], end_breakpoint_length);
 
-                res.response_status = handle_do_run(start_breakpoint, end_breakpoint, address, length, elements, &req.data[18+start_breakpoint_length+end_breakpoint_length]);
+                res.response_status = handle_do_run(start_breakpoint, end_breakpoint, address, length, &req.data[14+start_breakpoint_length+end_breakpoint_length]);
                 res.data = nullptr;
                 res.data_length = 0;
 
@@ -571,26 +561,25 @@ namespace testing{
                 // (? Bytes) End breakpoint name 
 
                 // Min of 25 bytes length (both names at least one characters).
-                if(!check_min_request_length(req, res, 25)) return;
+                if(!check_min_request_length(req, res, 21)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
-                uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
-                uint32_t shm_id = testing_communication::bytes_to_int32(req.data, 12);
-                uint32_t offset = testing_communication::bytes_to_int32(req.data, 16);
+                uint32_t shm_id = testing_communication::bytes_to_int32(req.data, 8);
+                uint32_t offset = testing_communication::bytes_to_int32(req.data, 12);
 
-                char stop_after_string_termination = req.data[20];
+                char stop_after_string_termination = req.data[16];
 
-                uint8_t start_breakpoint_length = req.data[21];
-                uint8_t end_breakpoint_length = req.data[22];
+                uint8_t start_breakpoint_length = req.data[17];
+                uint8_t end_breakpoint_length = req.data[18];
 
                 // Check again with all length combined.
-                if(!check_exact_request_length(req, res, 23+start_breakpoint_length+end_breakpoint_length)) return;
+                if(!check_exact_request_length(req, res, 19+start_breakpoint_length+end_breakpoint_length)) return;
 
-                std::string start_breakpoint(&req.data[23], start_breakpoint_length);
-                std::string end_breakpoint(&req.data[start_breakpoint_length+23], end_breakpoint_length);
+                std::string start_breakpoint(&req.data[19], start_breakpoint_length);
+                std::string end_breakpoint(&req.data[start_breakpoint_length+19], end_breakpoint_length);
 
 
-                res.response_status = handle_do_run_shm(start_breakpoint, end_breakpoint, address, length, shm_id, offset, (bool)stop_after_string_termination);
+                res.response_status = handle_do_run_shm(start_breakpoint, end_breakpoint, address, shm_id, offset, (bool)stop_after_string_termination);
                 res.data = nullptr;
                 res.data_length = 0;
 

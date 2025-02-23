@@ -1,6 +1,7 @@
 #ifndef FUZZING_TEST_INTERFACE_H
 #define FUZZING_TEST_INTERFACE_H
 
+#include <limits>
 #include <mqueue.h>
 #include <string>
 #include <cstring>

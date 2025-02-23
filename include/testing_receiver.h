@@ -43,8 +43,8 @@ namespace testing{
             // Infinite loop which checks the communication interface for new requests and then calls the corresponding handlers. After a request is handeled it will send a response back.
             void receiver_loop();
 
-            // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. This function will seperate the whole shared memory block given by the shm id and offset into elements of mmio_length for the do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
-            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, uint64_t mmio_length, int shm_id, unsigned int offset, bool stop_after_string_termination);
+            // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
+            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination);
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
             status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
@@ -119,11 +119,11 @@ namespace testing{
             // Virtual function to handle a DISABLE_MMIO_TRACKING command. Needs to be overwritten. This will disalbe the mmio tracking.
             virtual status handle_disable_mmio_tracking() = 0;
 
-            // Virtual function to handle a SET_MMIO_VALUE command. Needs to be overwritten. This function sets the read (and intercepted) MMIO data after a MMIO_READ event. For this mmio tracking must be enabled.
+            // Virtual function to handle a SET_MMIO_VALUE command. Needs to be overwritten. This function sets the read (and intercepted) MMIO data after a MMIO_READ event. For this mmio tracking must be enabled. If multiple events occoured it will set the value according to the occourance.
             virtual status handle_set_mmio_value(size_t length, char* value) = 0;
 
-            // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds multiple elements (element_count) to the MMIO read queue for the given address and length. When a read occures and there is a suitable element in the read queue (fits address and length) it will be written to the request and the simulation will not be suspended and MMIO_WRITE event not be triggered. If there a multiple suitable elements, the first in the queue will be picked. Value must contain the elements after another. 
-            virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, size_t element_count, char* value) = 0;
+            // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds data according to an address to the MMIO read queue. When a read occures and the address fits data inside the read queue, it will use the data, according to the length of the request and the simulation will not be suspended and MMIO_READ event not be triggered. If data in the read queue is shorter than the request length, the MMIO_READ event will be triggered for the remaining data.
+            virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, char* value) = 0;
             
             // Virtual function to handle a TRIGGER_CPU_INTERRUPT command. Needs to be overwritten. With this function a CPU ISR can be triggered manually by its ID.
             virtual status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
@@ -147,7 +147,7 @@ namespace testing{
             virtual status handle_get_return_code(uint64_t &code) = 0;
 
             // Virtual function to handle a DO_RUN command. This does one run 
-            virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, size_t mmio_element_count, char* mmio_value) = 0;
+            virtual status handle_do_run(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, size_t mmio_length, char* mmio_value) = 0;
 
             // Event queue
             std::deque<event> m_event_queue;
