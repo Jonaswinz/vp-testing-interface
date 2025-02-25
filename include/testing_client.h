@@ -21,6 +21,11 @@ namespace testing{
             // Virtual function to wait for the ready message on the interface. Needs to be overwritten.
             virtual bool wait_for_ready() = 0;
 
+            // Resets the ready state, so requests cannot be send and wait_for_ready must be called again.
+            void reset_ready(){
+                m_started = false;
+            }
+
             // Virtual function to send a request and wait for the response (and fill the response). Needs to be overwritten.
             virtual bool send_request(request* req, response* res) = 0;
 

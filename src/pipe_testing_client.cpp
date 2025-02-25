@@ -23,6 +23,12 @@ namespace testing{
         // Closes both pipes.
         mq_close(m_request_fd);
         mq_close(m_response_fd);
+
+        mq_close(m_request_pipe[0]);
+        mq_close(m_request_pipe[1]);
+
+        mq_close(m_response_pipe[0]);
+        mq_close(m_response_pipe[1]);
     }
 
     bool pipe_testing_client::start(){
