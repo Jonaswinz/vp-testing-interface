@@ -2,7 +2,16 @@
 
 namespace testing{
 
+    pipe_testing_client::pipe_testing_client(){
+
+        // Do not use specific fds.
+        m_specific_fds = false;
+    }
+
     pipe_testing_client::pipe_testing_client(int request_fd, int response_fd){
+
+        // Enable specific fds.
+        m_specific_fds = true;
 
         // Copies pipes file descriptors to local variables.
         m_request_fd = request_fd;
@@ -23,9 +32,13 @@ namespace testing{
             return false;
         }
 
-        if(dup2(m_request_pipe[0], m_request_fd)  == -1 || dup2(m_response_pipe[1], m_response_fd) == -1){
-            log_error_message("Error setting file descriptor of pipes: %s", strerror(errno));
-            return false;
+        if(m_specific_fds){
+            if(dup2(m_request_pipe[0], m_request_fd)  == -1 || dup2(m_response_pipe[1], m_response_fd) == -1){
+                log_error_message("Error setting file descriptor of pipes: %s", strerror(errno));
+                return false;
+            }
+
+            log_info_message("Used specific file descriptors for request pipe: %d and response pipe: %d.", m_request_fd, m_response_fd);
         }
 
         return true;
@@ -173,6 +186,22 @@ namespace testing{
         log_info_message("RECEIVED: %d with length %d.", res->response_status, res->data_length);
 
         return true;
+    }
+
+    int pipe_testing_client::get_request_fd(){
+        if(m_specific_fds){
+            return m_request_fd;
+        }else{
+            return m_request_pipe[0];
+        }
+    }
+
+    int pipe_testing_client::get_response_fd(){
+        if(m_specific_fds){
+            return m_response_fd;
+        }else{
+            return m_response_pipe[1];
+        }
     }
 
     void pipe_testing_client::clear_pipe(int fd) {

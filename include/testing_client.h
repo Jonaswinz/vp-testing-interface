@@ -80,6 +80,9 @@ namespace testing{
         public:
             // Creates a pipe testing client for specific request and response pipes.
             pipe_testing_client(int request_fd, int response_fd);
+
+            // Creates a pipe testing client without specific request and reponse pipe fds.
+            pipe_testing_client();
             ~pipe_testing_client();
 
             // Implemented start function, which openes the pipes. Both pipes will be cleared during starting.
@@ -90,11 +93,20 @@ namespace testing{
 
             // Implemented send_request function, which uses the pipes. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;
+
+            // Getter for the used read FD of the request queue.
+            int get_request_fd();
+
+            // Getter for the used write FD of the response queue.
+            int get_response_fd();
             
         private:
 
             // Function to clear lost data of a pipe.
             void clear_pipe(int fd);
+
+            // Indicating if specific m_request_fd and m_response_fd should be used as specific fds.
+            bool m_specific_fds = false;
 
             // File descriptor of the request pipe.
             int m_request_fd;
