@@ -50,26 +50,47 @@ namespace testing{
         return true;
     }
 
+    bool pipe_testing_client::check_for_ready(){
+
+        int bytes_available = 0;
+    
+        // Use ioctl to check available bytes
+        if (ioctl(m_response_pipe[0], FIONREAD, &bytes_available) == -1) {
+            perror("ioctl");
+            return false;
+        }
+
+        if(bytes_available < 6){
+            return false;
+        }
+
+        char buffer[6];
+
+        ssize_t bytes_read = read(m_response_pipe[0], buffer, 6);
+
+        if (bytes_read == -1) {
+            log_error_message("An error occurred while waiting for ready message: %s", strerror(errno));
+            return false;
+        }
+
+        buffer[bytes_read] = '\0'; // Ensure null-termination for valid C-string
+        std::string message(buffer);
+        if (message == "ready") {
+            log_info_message("Received ready message");
+
+            // Indicate ready.
+            m_started = true;
+            return true;
+        }
+
+        return false;
+    }
+
     bool pipe_testing_client::wait_for_ready(){
         char buffer[6];
 
         while (true) {
-            ssize_t bytes_read = read(m_response_pipe[0], buffer, 6);
-
-            if (bytes_read == -1) {
-                log_error_message("An error occurred while waiting for ready message: %s", strerror(errno));
-                return false;
-            }
-
-            buffer[bytes_read] = '\0'; // Ensure null-termination for valid C-string
-            std::string message(buffer);
-            if (message == "ready") {
-                log_info_message("Received ready message");
-
-                // Indicate ready.
-                m_started = true;
-                break;
-            }
+            if(check_for_ready()) break;
         }
 
         return true;

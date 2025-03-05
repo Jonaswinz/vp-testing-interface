@@ -18,6 +18,9 @@ namespace testing{
             // Virtual function to start the interface. Needs to be overwritten.
             virtual bool start() = 0;
 
+            // Virtual function to check if the ready message is there on the interface. Needs to be overwritten.
+            virtual bool check_for_ready() = 0;
+
             // Virtual function to wait for the ready message on the interface. Needs to be overwritten.
             virtual bool wait_for_ready() = 0;
 
@@ -53,6 +56,9 @@ namespace testing{
 
             // Implemented start function, which openes the message queues. Both message queues will be cleared during starting.
             bool start() override;
+
+            // Implemented check_for_ready function, which check for the "ready" message once, without blocking.
+            bool check_for_ready() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response message queue.
             bool wait_for_ready() override;
@@ -92,6 +98,9 @@ namespace testing{
 
             // Implemented start function, which openes the pipes. Both pipes will be cleared during starting.
             bool start() override;
+
+            // Implemented check_for_ready function, which check for the "ready" message once, without blocking.
+            bool check_for_ready() override;
 
             // Implemented wait_for_ready function, which waits (blocks) until the "ready" string is received on the response pipe.
             bool wait_for_ready() override;
