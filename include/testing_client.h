@@ -65,10 +65,14 @@ namespace testing{
 
             // Implemented send_request function, which uses the message queues. For the received data, new memory will be allocated, so after res was used it needs to be freed propertly. If res.data is not a nullptr, the function will try to free it.
             bool send_request(request* req, response* res) override;
-        private:
+
+            // Sets the receiver pid.
+            void set_receiver(pid_t receiver_id);
 
             // Function to clear lost data of a message queue.
             void clear_mq(const char* queue_name);
+
+        private:
 
             // String name of the request message queue.
             std::string m_request_name;
@@ -84,6 +88,9 @@ namespace testing{
 
             // Response message queue.
             mqd_t m_mqt_responses;
+
+            // Process id of the receiver (because multiple may listen).
+            pid_t m_receiver_id;
     };
 
     // testing_client implementation for pipe communication.

@@ -7,6 +7,9 @@ namespace testing{
         // Copies message queue names to local variables.
         m_request_name = request_name;
         m_response_name = response_name; 
+
+        // Default set to broadcast.
+        m_receiver_id = 0;
     }
 
     mq_testing_client::~mq_testing_client(){
@@ -25,8 +28,8 @@ namespace testing{
         m_attr.mq_curmsgs = 0;
 
         // Clears "lost" data from both message queues.
-        clear_mq(m_request_name.c_str());
-        clear_mq(m_response_name.c_str());
+        //clear_mq(m_request_name.c_str());
+        //clear_mq(m_response_name.c_str());
 
         // Openens both message queues and create them if not exist.
         if ((m_mqt_requests = mq_open(m_request_name.c_str(), O_WRONLY | O_CREAT, 0644, &m_attr)) == -1) {
@@ -63,8 +66,18 @@ namespace testing{
             return false;
         }
 
+        pid_t received_pid;
+        memcpy(&received_pid, buffer, sizeof(pid_t));
+
+        // Check if this process is the receiver.
+        if(received_pid != m_receiver_id){
+            // Put message back into the queue.
+            mq_send(m_mqt_responses, buffer, bytes_read, 0);
+            return false;
+        }
+
         buffer[bytes_read] = '\0'; // Ensure null-termination for valid string.
-        std::string message(buffer);
+        std::string message(buffer+sizeof(pid_t));
         if (message == "ready") {
             log_info_message("Received ready message!");
 
@@ -90,12 +103,14 @@ namespace testing{
     bool mq_testing_client::send_request(request* req, response* res) {
 
         // Request structure:
-        // 0                     Byte: Command
-        // 1 - (MQ_MAX_LENGTH-1) Byte: Data
+        // 0 - 3                 Byte: Process ID
+        // 4                     Byte: Command
+        // 5 - (MQ_MAX_LENGTH-1) Byte: Data
 
         // Response structure:
-        // 0                     Byte: Status
-        // 1 - (MQ_MAX_LENGTH-2) Byte: Data
+        // 0 - 3                 Byte: Process ID
+        // 4                     Byte: Status
+        // 5 - (MQ_MAX_LENGTH-2) Byte: Data
         // MQ_MAX_LENGTH         Byte: More data
 
         // Check if communication started.
@@ -105,36 +120,53 @@ namespace testing{
         }
 
         // Check if request (command and data) fits in one message (currently only supported that the request is only one message).
-        if(req->data_length+1 > MQ_MAX_LENGTH){
+        if(sizeof(pid_t)+req->data_length+1 > MQ_MAX_LENGTH){
             log_error_message("When using MQ the request cannot be larger than the defined MQ_MAX_LENGTH length of %d! Please increase MQ_MAX_LENGTH or use pipe communication instead.", MQ_MAX_LENGTH);
         }
 
         // Creating a buffer for sending and receiving data.
         char buffer[MQ_MAX_LENGTH];
 
-        // Copy command and data into one buffer.
-        buffer[0] = req->request_command;
-        memcpy(buffer+1, req->data, req->data_length);
+        // Copy pid, command and data into one buffer.
+        memcpy(buffer, &m_receiver_id, sizeof(pid_t));
+        buffer[sizeof(pid_t)] = req->request_command;
+        memcpy(sizeof(pid_t)+buffer+1, req->data, req->data_length);
 
         // Send this buffer.
-        if (mq_send(m_mqt_requests, buffer, req->data_length+1, 0) == -1) {
+        if (mq_send(m_mqt_requests, buffer, sizeof(pid_t)+req->data_length+1, 0) == -1) {
             log_error_message("Error sending message: %s", strerror(errno));
             return false;
         }
 
         log_info_message("SENT: %d with length %d.", req->request_command, req->data_length);
 
-        // Waiting for a message and writing it to the same buffer.
-        ssize_t bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, NULL);
-        if (bytes_read == -1) {
-            log_error_message("Error receiving message: %s", strerror(errno));
-            return false;
-        }
+        ssize_t bytes_read = 0;
 
-        if (bytes_read < 1) {
-            log_error_message("Received message was too short for a valid request!");
-            return false;
-        }
+        do{
+            // Waiting for a message and writing it to the same buffer.
+            bytes_read = mq_receive(m_mqt_responses, buffer, MQ_MAX_LENGTH, NULL);
+            if (bytes_read == -1) {
+                log_error_message("Error receiving message: %s", strerror(errno));
+                return false;
+            }
+
+            if (bytes_read < sizeof(pid_t)+1) {
+                log_error_message("Received message was too short for a valid request!");
+                return false;
+            }
+
+            // Extract the receiver process id.
+            pid_t received_pid;
+            memcpy(&received_pid, buffer, sizeof(pid_t));
+
+            // Check if this is the right response (from the right receiver).
+            if(received_pid != m_receiver_id){
+                // Put message back into the queue.
+                mq_send(m_mqt_responses, buffer, bytes_read, 0);
+            }else{
+                break;
+            }
+        }while(true);
 
         // Clear old data if existed.
         if(res->data != nullptr){
@@ -143,7 +175,7 @@ namespace testing{
         }
 
         // Reading the response status from the buffer
-        res->response_status = (status)buffer[0];
+        res->response_status = (status)buffer[sizeof(pid_t)];
 
         // Error checking of the response status.
         if(res->response_status == STATUS_ERROR){
@@ -154,15 +186,19 @@ namespace testing{
             return false;
         }
 
-        res->data_length = bytes_read-1;
-        if(bytes_read > 1){
-            res->data = (char*)malloc(bytes_read-1);
-            std::memcpy(res->data, buffer+1, bytes_read-1);
+        res->data_length = bytes_read-1-sizeof(pid_t);
+        if(bytes_read-sizeof(pid_t) > 1){
+            res->data = (char*)malloc(bytes_read-1-sizeof(pid_t));
+            std::memcpy(res->data, buffer+1+sizeof(pid_t), bytes_read-1-sizeof(pid_t));
         }
 
         log_info_message("RECEIVED: %d with length %d.", res->response_status, res->data_length);
 
         return true;
+    }
+
+    void mq_testing_client::set_receiver(pid_t receiver_id){
+        m_receiver_id = receiver_id;
     }
 
     void mq_testing_client::clear_mq(const char* queue_name) {

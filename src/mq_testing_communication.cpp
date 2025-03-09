@@ -26,7 +26,7 @@ namespace testing{
         m_attr.mq_curmsgs = 0;
 
         // Openens both message queues.
-        if ((m_mqt_requests = mq_open(m_mq_request_name.c_str(), O_RDONLY, 0660, &m_attr)) == -1) {
+        if ((m_mqt_requests = mq_open(m_mq_request_name.c_str(), O_RDWR, 0660, &m_attr)) == -1) {
             m_testing_receiver->log_error_message("Error opening request message queue %s.", m_mq_request_name);
             return false;
         }
@@ -36,9 +36,15 @@ namespace testing{
             return false;
         }
 
-        // Sends "ready" string to response message queue, to signal that requests can be sent.
+        // Sends "ready" string to response message queue with the current process id, to signal that requests can be sent.
+        pid_t this_process = getpid();
         std::string ready_signal = "ready";
-        if(mq_send(m_mqt_responses, ready_signal.c_str(), ready_signal.size(), 0) == 0){
+
+        char buffer[sizeof(pid_t)+ready_signal.size()];
+        memcpy(buffer, &this_process, sizeof(pid_t));
+        memcpy(buffer+sizeof(pid_t), ready_signal.c_str(),  ready_signal.size());
+
+        if(mq_send(m_mqt_responses, buffer, sizeof(pid_t)+ready_signal.size(), 0) == 0){
             m_testing_receiver->log_info_message("Communication ready, waiting for requests.");
         }else{
             m_testing_receiver->log_error_message("Error sending ready message: %s.", strerror(errno));  
@@ -53,8 +59,9 @@ namespace testing{
     bool mq_testing_communication::send_response(response &res){
 
         // Response structure:
-        // 0                     Byte: Status
-        // 1 - (MQ_MAX_LENGTH-1) Byte: Data
+        // 0 - 3                 Byte: Process ID
+        // 4                     Byte: Status
+        // 5 - (MQ_MAX_LENGTH-1) Byte: Data
 
         // Check if communication started.
         if(!m_started){
@@ -63,19 +70,22 @@ namespace testing{
         }
 
         // Check if response (command and data) fits in one message (currently only supported that the response is only one message).
-        if(res.data_length+1 > MQ_MAX_LENGTH){
+        if(sizeof(pid_t)+res.data_length+1 > MQ_MAX_LENGTH){
             m_testing_receiver->log_error_message("When using MQ the request cannot be larger than the defined MQ_MAX_LENGTH length of %d! Please increase MQ_MAX_LENGTH or use pipe communication instead.", MQ_MAX_LENGTH);
         }
 
         // Creating a buffer for sending data.
-        char buffer[res.data_length+1];
+        char buffer[sizeof(pid_t)+res.data_length+1];
 
-        // Write response status and the data to the buffer.
-        buffer[0] = res.response_status;
-        memcpy(buffer+1, res.data, res.data_length);
+        pid_t this_process = getpid();
+
+        // Write the current process id, response status and the data to the buffer.
+        memcpy(buffer, &this_process, sizeof(pid_t));
+        buffer[sizeof(pid_t)] = res.response_status;
+        memcpy(buffer+sizeof(pid_t)+1, res.data, res.data_length);
 
         // Send the response code and data.
-        if(mq_send(m_mqt_responses, buffer, res.data_length+1, 0) == -1){
+        if(mq_send(m_mqt_responses, buffer, sizeof(pid_t)+res.data_length+1, 0) == -1){
             m_testing_receiver->log_error_message("Error sending response data: %s", strerror(errno));
             return false;
         }
@@ -86,8 +96,9 @@ namespace testing{
     bool mq_testing_communication::receive_request(){
 
         // Request structure:
-        // 0                     Byte: Command
-        // 1 - (MQ_MAX_LENGTH-1) Byte: Data
+        // 0 - 3                 Byte: Process ID
+        // 4                     Byte: Command
+        // 5 - (MQ_MAX_LENGTH-1) Byte: Data
 
         // Check if communication started.
         if(!m_started){
@@ -105,8 +116,19 @@ namespace testing{
             return false;
         }
 
-        if (bytes_read < 1) {
+        if (bytes_read < sizeof(pid_t)+1) {
             m_testing_receiver->log_error_message("Message was too short for a valid request!");  
+            return false;
+        }
+
+        // Extract the receiver process id.
+        pid_t received_pid;
+        memcpy(&received_pid, buffer, sizeof(pid_t));
+
+        // Check if this process is the receiver.
+        if(received_pid != 0 && received_pid != getpid()){
+            // Put message back into the queue.
+            mq_send(m_mqt_requests, buffer, bytes_read, 0);
             return false;
         }
 
@@ -118,11 +140,11 @@ namespace testing{
 
         // Updating the m_current_req variable with the new request.
         m_current_req = request();
-        m_current_req.data_length = bytes_read-1;
-        m_current_req.request_command = (command)buffer[0];
-        if(bytes_read > 1){
-            m_current_req.data = (char*)malloc(bytes_read-1);
-            std::memcpy(m_current_req.data, buffer+1, bytes_read-1);
+        m_current_req.data_length = bytes_read-1-sizeof(pid_t);
+        m_current_req.request_command = (command)buffer[sizeof(pid_t)];
+        if(bytes_read-sizeof(pid_t) > 1){
+            m_current_req.data = (char*)malloc(bytes_read-1-sizeof(pid_t));
+            std::memcpy(m_current_req.data, buffer+1+sizeof(pid_t), bytes_read-1-sizeof(pid_t));
         }
 
         return true;
