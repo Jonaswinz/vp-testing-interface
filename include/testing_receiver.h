@@ -44,7 +44,7 @@ namespace testing{
             void receiver_loop();
 
             // Handler for the DO_RUN_SHM command, which reads the test case from the given shared memory region and then calls the handle_do_run function. If stop_after_string_termination is enabled it will stop read the shared memory after the first "\0" (termination character).
-            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination, std::string &register_name);
+            status handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination, std::string &register_name, std::string &error_symbol_name);
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
             status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
@@ -125,8 +125,8 @@ namespace testing{
             // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds data according to an address to the MMIO read queue. When a read occures and the address fits data inside the read queue, it will use the data, according to the length of the request and the simulation will not be suspended and MMIO_READ event not be triggered. If data in the read queue is shorter than the request length, the MMIO_READ event will be triggered for the remaining data.
             virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, char* value) = 0;
             
-            // Virtual function to handle a TRIGGER_CPU_INTERRUPT command. Needs to be overwritten. With this function a CPU ISR can be triggered manually by its ID.
-            virtual status handle_trigger_cpu_interrupt(uint8_t interrupt) = 0;
+            // Virtual function to handle a SET_CPU_INTERRUPT_TRIGGER command. Needs to be overwritten. With this function a interrupt can be triggered, if the given symbol is encountered during simulation.
+            virtual status handle_set_cpu_interrupt_trigger(uint8_t interrupt, std::string &interrupt_symbol) = 0;
 
             // Virtual function to handle a ENABLE_CODE_COVERAGE command. This will enable the code coverage tracking.
             virtual status handle_enable_code_coverage() = 0;
@@ -146,8 +146,26 @@ namespace testing{
             // Virtual function to handle a GET_RETURN_CODE command. This will return the saved return code. Where and which register should be saved as the return code can be set via SET_RETURN_CODE_ADDRESS. The recording of the return code will be resetted after this call.
             virtual status handle_get_return_code(uint64_t &code) = 0;
 
-            // Virtual function to handle a DO_RUN command. This does one run 
-            virtual status handle_do_run(std::string &start_breakpoint, std::string &end_breakpoint, uint64_t mmio_address, size_t mmio_length, char* mmio_value, std::string &register_name) = 0;
+            // Virtual function to handle a DO_RUN command. This does one run from a start breakpoint to an endbreakpoint with mmio read queue data. It also records the given register at the end breakpoint and watches an error symbol, if specified.
+            virtual status handle_do_run(std::string &start_breakpoint, std::string &end_breakpoint, uint64_t mmio_address, size_t mmio_length, char* mmio_value, std::string &register_name, std::string &error_symbol_name) = 0;
+
+            // Virtual function to handle a SET_ERROR_SYMBOL command. This sets a specific symbol that should be watched during the execution. If this symbol is encountered, the simulation is stopped and the event ERROR_SYMBOL_HIT triggered.
+            virtual status handle_set_error_symbol(std::string &symbol) = 0;
+
+            // Virtual function to handle a SET_FIXED_READ command. Tthis sets one or multiple fixed read returnes when the MMIO read with the given id event is catched.
+            virtual status handle_set_fixed_read(size_t count, char* data) = 0;
+
+            // Virtual function to handle a GET_CPU_PC command, for getting the CPU program counter.
+            virtual status handle_get_cpu_pc(uint64_t &pc) = 0;
+
+            // Virtual function to handle a JUMP_CPU_TO command. This lets the CPU jump to a specific address.
+            virtual status handle_jump_cpu_to(uint64_t address) = 0;
+
+            // Virtual function to handle a STORE_CPU_REGISTER command. This stores the CPU registers, except the PC.
+            virtual status handle_store_cpu_register() = 0;
+
+            // Virtual function to handle RESTORE_CPU_REGISTER command. THis restores the CPU registers, except the PC.
+            virtual status handle_restore_cpu_register() = 0;
 
             // Event queue
             std::deque<event> m_event_queue;

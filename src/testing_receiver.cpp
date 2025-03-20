@@ -46,7 +46,7 @@ namespace testing{
         return true;
     }
 
-    status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination, std::string &register_name)
+    status testing_receiver::handle_do_run_shm(std::string start_breakpoint, std::string end_breakpoint, uint64_t mmio_address, int shm_id, unsigned int offset, bool stop_after_string_termination, std::string &register_name, std::string &error_symbol_name)
     {
         log_info_message("Loading MMIO data from shared memory %d.", shm_id);
 
@@ -72,7 +72,7 @@ namespace testing{
             data_length = strnlen(mmio_data+offset, data_length - 1) + 1;
         }
 
-        status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, data_length, mmio_data+offset, register_name);
+        status return_status = this->handle_do_run(start_breakpoint, end_breakpoint, mmio_address, data_length, mmio_data+offset, register_name, error_symbol_name);
 
         // Detach the shared memory
         if (shmdt(mmio_data) == -1) {
@@ -398,14 +398,17 @@ namespace testing{
                 break;
             }
 
-            case TRIGGER_CPU_INTERRUPT:
+            case SET_CPU_INTERRUPT_TRIGGER:
             {   
-                // Expect minimum 1 bytes of data: interrupt index
-                if(!check_min_request_length(req, res, 1)) return;
+                // Expect minimum 1 bytes of data: interrupt index and min. 1 byte of data.
+                if(!check_min_request_length(req, res, 2)) return;
                 
                 uint8_t interrupt = res.data[0];
+                
+                // The length of the symbol name is determined by the data length without the interrupt ID. So not additional length checking is required.
+                std::string interrupt_symbol(req.data + 1, req.data_length-1);
 
-                res.response_status = handle_trigger_cpu_interrupt(interrupt);
+                res.response_status = handle_set_cpu_interrupt_trigger(interrupt, interrupt_symbol);
                 res.data = nullptr;
                 res.data_length = 0;
 
@@ -522,10 +525,12 @@ namespace testing{
                 // (1 Bytes) End breakpoint name length +
                 // (? Bytes) Start breakpoint name +
                 // (? Bytes) End breakpoint name +
+                // (? Bytes) Return register name +
+                // (? Bytes) Error symbol name +
                 // (? Bytes) Data
 
-                // Min of 20 bytes length (all names at least one characters).
-                if(!check_min_request_length(req, res, 17)) return;
+                // Min of 19 bytes length (all names at least one characters).
+                if(!check_min_request_length(req, res, 19)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t length = testing_communication::bytes_to_int32(req.data, 8);
@@ -533,15 +538,17 @@ namespace testing{
                 uint8_t start_breakpoint_length = req.data[12];
                 uint8_t end_breakpoint_length = req.data[13];
                 uint8_t register_name_length = req.data[14];
+                uint8_t error_symbol_name_length = req.data[15];
                 
                 // Check again with all length combined.
-                if(!check_exact_request_length(req, res, 15+start_breakpoint_length+end_breakpoint_length+register_name_length+length)) return;
+                if(!check_exact_request_length(req, res, 16+start_breakpoint_length+end_breakpoint_length+register_name_length+error_symbol_name_length+length)) return;
 
-                std::string start_breakpoint(&req.data[15], start_breakpoint_length);
-                std::string end_breakpoint(&req.data[start_breakpoint_length+15], end_breakpoint_length);
-                std::string register_name(&req.data[start_breakpoint_length+end_breakpoint_length+15], register_name_length);
+                std::string start_breakpoint(&req.data[16], start_breakpoint_length);
+                std::string end_breakpoint(&req.data[start_breakpoint_length+16], end_breakpoint_length);
+                std::string register_name(&req.data[start_breakpoint_length+end_breakpoint_length+16], register_name_length);
+                std::string error_symbol_name(&req.data[start_breakpoint_length+end_breakpoint_length+register_name_length+16], error_symbol_name_length);
 
-                res.response_status = handle_do_run(start_breakpoint, end_breakpoint, address, length, &req.data[15+start_breakpoint_length+end_breakpoint_length+register_name_length], register_name);
+                res.response_status = handle_do_run(start_breakpoint, end_breakpoint, address, length, &req.data[16+start_breakpoint_length+end_breakpoint_length+register_name_length], register_name, error_symbol_name);
                 res.data = nullptr;
                 res.data_length = 0;
 
@@ -561,9 +568,11 @@ namespace testing{
                 // (1 Bytes) End breakpoint name length +
                 // (? Bytes) Start breakpoint name +
                 // (? Bytes) End breakpoint name 
+                // (? Bytes) Return register name +
+                // (? Bytes) Error symbol name +
 
                 // Min of 25 bytes length (both names at least one characters).
-                if(!check_min_request_length(req, res, 23)) return;
+                if(!check_min_request_length(req, res, 25)) return;
 
                 uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
                 uint32_t shm_id = testing_communication::bytes_to_int32(req.data, 8);
@@ -574,16 +583,99 @@ namespace testing{
                 uint8_t start_breakpoint_length = req.data[17];
                 uint8_t end_breakpoint_length = req.data[18];
                 uint8_t register_name_length = req.data[19];
+                uint8_t error_symbol_name_length = req.data[20];
 
                 // Check again with all length combined.
-                if(!check_exact_request_length(req, res, 20+start_breakpoint_length+end_breakpoint_length+register_name_length)) return;
+                if(!check_exact_request_length(req, res, 21+start_breakpoint_length+end_breakpoint_length+register_name_length+error_symbol_name_length)) return;
 
-                std::string start_breakpoint(&req.data[20], start_breakpoint_length);
-                std::string end_breakpoint(&req.data[start_breakpoint_length+20], end_breakpoint_length);
-                std::string register_name(&req.data[start_breakpoint_length+end_breakpoint_length+20], register_name_length);
+                std::string start_breakpoint(&req.data[21], start_breakpoint_length);
+                std::string end_breakpoint(&req.data[start_breakpoint_length+21], end_breakpoint_length);
+                std::string register_name(&req.data[start_breakpoint_length+end_breakpoint_length+21], register_name_length);
+                std::string error_symbol_name(&req.data[start_breakpoint_length+end_breakpoint_length+register_name_length+21], error_symbol_name_length);
 
+                res.response_status = handle_do_run_shm(start_breakpoint, end_breakpoint, address, shm_id, offset, (bool)stop_after_string_termination, register_name, error_symbol_name);
+                res.data = nullptr;
+                res.data_length = 0;
 
-                res.response_status = handle_do_run_shm(start_breakpoint, end_breakpoint, address, shm_id, offset, (bool)stop_after_string_termination, register_name);
+                break;
+            }
+
+            case SET_ERROR_SYMBOL:
+            {   
+
+                // Expect minimum 1 bytes of data: symbol name
+                if(!check_min_request_length(req, res, 1)) return;
+
+                // The length of the symbol name is determined by the data length. So not additional length checking is required.
+                std::string symbol(req.data, req.data_length);
+
+                res.response_status = handle_set_error_symbol(symbol);
+                res.data = nullptr;
+                res.data_length = 0;
+
+                break;
+            }
+
+            case SET_FIXED_READ:
+            {   
+                // Expect minimum 10 bytes of data: count, one address and one byte of data.
+                if(!check_min_request_length(req, res, 10)) return;
+
+                // Number of fixed read definitions inside the data.
+                uint8_t count = req.data[0];
+                
+                // For each fixed read there needs to be information about the addres (8 byte) and the data (1 byte).
+                if(!check_exact_request_length(req, res, count*9)) return;
+
+                res.response_status = handle_set_fixed_read(count, &req.data[1]);
+                res.data = nullptr;
+                res.data_length = 0;
+
+                break;
+            }
+
+            case GET_CPU_PC:
+            {   
+                if(!check_exact_request_length(req, res, 0)) return;
+
+                uint64_t cpu_pc;
+                res.response_status = handle_get_cpu_pc(cpu_pc);               
+                res.data_length = sizeof(uint64_t);
+                res.data = (char*)malloc(res.data_length); 
+                testing_communication::int64_to_bytes(cpu_pc, res.data, 0);
+
+                break;
+            }
+
+            case JUMP_CPU_TO:
+            {   
+                if(!check_exact_request_length(req, res, 8)) return;
+
+                uint64_t address = testing_communication::bytes_to_int64(req.data, 0);
+
+                res.response_status = handle_jump_cpu_to(address);
+                res.data = nullptr;
+                res.data_length = 0;
+
+                break;
+            }
+
+            case STORE_CPU_REGISTERS:
+            {   
+                if(!check_exact_request_length(req, res, 0)) return;
+
+                res.response_status = handle_store_cpu_register();
+                res.data = nullptr;
+                res.data_length = 0;
+
+                break;
+            }
+
+            case RESTORE_CPU_REGISTERS:
+            {   
+                if(!check_exact_request_length(req, res, 0)) return;
+
+                res.response_status = handle_restore_cpu_register();
                 res.data = nullptr;
                 res.data_length = 0;
 
