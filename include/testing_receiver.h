@@ -125,8 +125,8 @@ namespace testing{
             // Virtual function to handle a ADD_TO_MMIO_READ_QUEUE command. Needs to be overwritten. This function adds data according to an address to the MMIO read queue. When a read occures and the address fits data and length inside the read queue, it will use the data and the simulation will not be suspended and MMIO_READ event not be triggered. If data in the read queue is shorter than the request length, the MMIO_READ event will be triggered for the remaining data.
             virtual status handle_add_to_mmio_read_queue(uint64_t address, size_t length, size_t data_legnth, char* data) = 0;
             
-            // Virtual function to handle a SET_CPU_INTERRUPT_TRIGGER command. Needs to be overwritten. With this function a interrupt can be triggered, if the given symbol is encountered during simulation.
-            virtual status handle_set_cpu_interrupt_trigger(uint8_t interrupt, std::string &interrupt_symbol) = 0;
+            // Virtual function to handle a SET_CPU_INTERRUPT_TRIGGER command. Needs to be overwritten. With this function a interrupt (by its address) can be triggered, if the given address is encountered during simulation.
+            virtual status handle_set_cpu_interrupt_trigger(uint64_t interrupt_address, uint64_t trigger_address) = 0;
 
             // Virtual function to handle a ENABLE_CODE_COVERAGE command. This will enable the code coverage tracking.
             virtual status handle_enable_code_coverage() = 0;

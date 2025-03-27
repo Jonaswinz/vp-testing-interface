@@ -401,15 +401,12 @@ namespace testing{
 
             case SET_CPU_INTERRUPT_TRIGGER:
             {   
-                // Expect minimum 1 bytes of data: interrupt index and min. 1 byte of data.
-                if(!check_min_request_length(req, res, 2)) return;
+                if(!check_exact_request_length(req, res, 16)) return;
                 
-                uint8_t interrupt = res.data[0];
-                
-                // The length of the symbol name is determined by the data length without the interrupt ID. So not additional length checking is required.
-                std::string interrupt_symbol(req.data + 1, req.data_length-1);
+                uint64_t interrupt_address = testing_communication::bytes_to_int64(req.data, 0);
+                uint64_t trigger_address = testing_communication::bytes_to_int64(req.data, 8);
 
-                res.response_status = handle_set_cpu_interrupt_trigger(interrupt, interrupt_symbol);
+                res.response_status = handle_set_cpu_interrupt_trigger(interrupt_address, trigger_address);
                 res.data = nullptr;
                 res.data_length = 0;
 
