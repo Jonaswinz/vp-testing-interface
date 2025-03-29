@@ -25,7 +25,7 @@ namespace testing{
 
     // Possible events that the simulation can produce.
     enum event_type{
-        MMIO_READ, MMIO_WRITE, VP_END, BREAKPOINT_HIT, ERROR_SYMBOL_HIT
+        MMIO_READ, MMIO_WRITE, VP_END, BREAKPOINT_HIT, ERROR_SYMBOL_HIT, VP_ERROR
     };
 
     struct event{

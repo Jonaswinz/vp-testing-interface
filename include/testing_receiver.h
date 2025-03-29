@@ -48,6 +48,9 @@ namespace testing{
 
             // Handler for the GET_CODE_COVERAGE_SHM command, which writes the coverage map (m_bb_array) to the given shared memory region with a given offset.
             status handle_get_code_coverage_shm(int shm_id, unsigned int offset);
+
+            // Triggering VP_ERROR event from any context.
+            static void notify_VP_ERROR_event();
             
         protected:
 
@@ -166,6 +169,9 @@ namespace testing{
 
             // Virtual function to handle RESTORE_CPU_REGISTER command. THis restores the CPU registers, except the PC.
             virtual status handle_restore_cpu_register() = 0;
+
+            // Singleton reference
+            static testing_receiver* m_instance;
 
             // Event queue
             std::deque<event> m_event_queue;

@@ -4,6 +4,8 @@ namespace testing{
 
     testing_receiver::testing_receiver(){
 
+        m_instance = this;
+
         // Create two mutex for event synchonization.
         // m_empty_slots signals an empty event queue.
         // m_full_slots signals new events in event queue.
@@ -12,6 +14,8 @@ namespace testing{
     }
 
     testing_receiver::~testing_receiver(){
+
+        m_instance = nullptr;
 
         // Delete mutexes.
         sem_destroy(&m_empty_slots);
@@ -117,6 +121,13 @@ namespace testing{
         }
 
         return  STATUS_OK;
+    }
+
+    testing_receiver* testing_receiver::m_instance = nullptr;
+
+    void testing_receiver::notify_VP_ERROR_event(){
+        if(m_instance == nullptr) return;
+        m_instance->notify_event(event{VP_ERROR, nullptr, 0});
     }
 
     void testing_receiver::receiver_loop() {
